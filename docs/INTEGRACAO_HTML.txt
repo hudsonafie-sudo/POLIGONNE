@@ -1,0 +1,54 @@
+<!-- ========== INTEGRAÇÃO DE ARQUIVOS NOVOS ========== -->
+<!-- Adicione estas linhas no arquivo HTML principal (index.html ou similar) -->
+<!-- ANTES de carregar o arquivo principal do jogo -->
+
+<!-- === MECÂNICAS NOVAS === -->
+<script src="mecanicas/triggers.js"></script>
+<script src="mecanicas/status_avancados.js"></script>
+<script src="mecanicas/ricochete.js"></script>
+
+<!-- === SISTEMA DE CLASSES === -->
+<script src="sistema/classes.js"></script>
+<script src="sistema/passivos_universais.js"></script>
+
+<!-- === FEITIÇOS DAS 6 CLASSES === -->
+<script src="feiticos/classes/guerreiro.js"></script>
+<script src="feiticos/classes/atirador.js"></script>
+<script src="feiticos/classes/_todas_classes_resumo.js"></script>
+
+<!-- NOTA: O arquivo _todas_classes_resumo.js contém todos os feitiços -->
+<!-- de Caçador, Guardião, Clérigo e Berserker em formato resumido -->
+
+<!-- ========== ARQUIVOS MODIFICADOS ========== -->
+<!-- Os seguintes arquivos JÁ FORAM MODIFICADOS: -->
+<!-- - mecanicas/dano.js (Berserk corrigido, HP Scaling, Auto-Dano, Triggers, Swap, Status) -->
+
+<!-- ========== ORDEM CORRETA DE CARREGAMENTO ========== -->
+<!--
+1. mecanicas/dano.js (JÁ EXISTE - FOI MODIFICADO)
+2. mecanicas/triggers.js (NOVO)
+3. mecanicas/status_avancados.js (NOVO)
+4. mecanicas/ricochete.js (NOVO)
+5. sistema/classes.js (NOVO)
+6. sistema/passivos_universais.js (NOVO)
+7. feiticos/classes/*.js (NOVOS)
+-->
+
+<!-- ========== COMO TESTAR ========== -->
+<!--
+1. Abra o console do navegador (F12)
+2. Digite: getAllClasses()
+   - Deve mostrar array com 6 classes
+3. Digite: getAllPassivosUniversais()
+   - Deve mostrar array com 5 passivos
+4. Digite: DB_FEITICOS_GUERREIRO
+   - Deve mostrar array com 21 feitiços do Guerreiro
+-->
+
+<!-- ========== PRÓXIMOS PASSOS ========== -->
+<!--
+1. Criar UI de seleção de classe na tela de criação de personagem
+2. Criar UI de seleção de passivos (5 slots)
+3. Carregar feitiços da classe escolhida
+4. Testar em combate real
+-->

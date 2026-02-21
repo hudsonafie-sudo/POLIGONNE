@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Preview A - Características (Final)</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #1a1a2e;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 30px;
+    min-height: 100vh;
+    color: #fff;
+}
+.label { color: #888; font-size: 11px; text-align: center; margin-bottom: 10px; }
+
+/* === JANELA === */
+.game-window {
+    width: 480px;
+    background: linear-gradient(180deg, #16162b 0%, #0e0e1a 100%);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+.window-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: linear-gradient(90deg, rgba(40,40,80,0.8), rgba(20,20,40,0.6));
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.window-header h4 { font-size: 13px; color: #eee; font-weight: 600; }
+.window-close {
+    background: rgba(255,60,60,0.15);
+    border: 1px solid rgba(255,60,60,0.3);
+    color: #f66;
+    width: 24px; height: 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+}
+.window-content { padding: 8px; }
+
+/* === AVATAR + NÍVEL === */
+.top-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+.avatar-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    position: relative;
+    cursor: default;
+}
+.avatar-box {
+    width: 60px; height: 60px;
+    background: linear-gradient(135deg, rgba(0,0,0,0.4), rgba(30,30,60,0.3));
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 40px;
+}
+.avatar-level {
+    font-size: 11px;
+    font-weight: bold;
+    color: #cda0ff;
+    background: rgba(0,0,0,0.4);
+    padding: 1px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(205,160,255,0.15);
+    white-space: nowrap;
+}
+/* XP bar sutil abaixo do nível */
+.xp-bar-mini {
+    width: 100%;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 1px;
+}
+.xp-bar-mini-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+    border-radius: 2px;
+    width: 3.5%;
+    transition: width 0.3s;
+}
+/* Tooltip XP ao hover do avatar */
+.xp-tooltip {
+    display: none;
+    position: absolute;
+    top: -28px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.92);
+    border: 1px solid rgba(205,160,255,0.25);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    color: #cda0ff;
+    white-space: nowrap;
+    z-index: 10;
+    pointer-events: none;
+}
+.avatar-area:hover .xp-tooltip { display: block; }
+.top-info { flex: 1; }
+
+/* PA/PM/PE/PV */
+.primary-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3px;
+}
+.primary-stat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 8px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 4px;
+    border-left: 3px solid #555;
+    min-height: 24px;
+}
+.primary-stat .stat-label { color: #ccc; font-size: 11px; }
+.primary-stat .stat-val { color: #fff; font-weight: bold; font-size: 13px; min-width: 24px; text-align: right; }
+.primary-stat.pa { border-left-color: #3b82f6; }
+.primary-stat.pm { border-left-color: #22c55e; }
+.primary-stat.pe { border-left-color: #eab308; }
+.primary-stat.pv { border-left-color: #e74c3c; }
+
+/* === SEÇÕES === */
+.stats-section {
+    background: rgba(0,0,0,0.15);
+    border-radius: 6px;
+    padding: 4px;
+    border: 1px solid rgba(255,255,255,0.04);
+}
+.section-title {
+    font-size: 9px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    text-align: center;
+    padding: 1px 0 3px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    margin-bottom: 3px;
+}
+
+/* ROWS */
+.attr-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 2px 6px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 4px;
+    border-left: 3px solid #555;
+    min-height: 22px;
+    margin-bottom: 1px;
+}
+.attr-row .a-name { color: #ccc; font-size: 11px; white-space: nowrap; }
+.attr-row .a-val { color: #fff; font-weight: bold; font-size: 12px; min-width: 28px; text-align: right; }
+
+/* Cores atributos */
+.attr-row.strength     { border-left-color: #e8a04e; }
+.attr-row.agility      { border-left-color: #5f5; }
+.attr-row.intelligence { border-left-color: #ff5555; }
+.attr-row.luck         { border-left-color: #3399ff; }
+.attr-row.wisdom       { border-left-color: #9370DB; }
+.attr-row.dodge        { border-left-color: #6ec6ff; }
+.attr-row.block        { border-left-color: #e6c44d; }
+.attr-row.range        { border-left-color: #ff7b54; }
+.attr-row.invocation   { border-left-color: #ff69b4; }
+.attr-row.initiative   { border-left-color: #f5e642; }
+.attr-row.parada       { border-left-color: #8cbcff; }
+.attr-row.critico      { border-left-color: #ff4466; }
+
+/* Cores dano */
+.attr-row.dmg-neutral  { border-left-color: #aaa; }
+.attr-row.dmg-water    { border-left-color: #4499dd; }
+.attr-row.dmg-earth    { border-left-color: #44aa44; }
+.attr-row.dmg-fire     { border-left-color: #ff5533; }
+.attr-row.dmg-air      { border-left-color: #77dd55; }
+
+/* Cores resistência */
+.attr-row.res-neutral  { border-left-color: #aaa; }
+.attr-row.res-water    { border-left-color: #4499dd; }
+.attr-row.res-earth    { border-left-color: #44aa44; }
+.attr-row.res-fire     { border-left-color: #ff5533; }
+.attr-row.res-air      { border-left-color: #77dd55; }
+
+/* Duas colunas */
+.dual-section {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+.dual-section > .stats-section { flex: 1; }
+
+/* Par Dano Geral + Cura lado a lado */
+.general-pair {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+.general-stat {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 6px;
+    border-left: 3px solid #555;
+    min-height: 26px;
+}
+.general-stat .gs-name {
+    color: #ccc;
+    font-size: 11px;
+    white-space: nowrap;
+}
+.general-stat .gs-val {
+    color: #fff;
+    font-weight: bold;
+    font-size: 13px;
+    min-width: 24px;
+    text-align: right;
+}
+.general-stat.dmg-geral { border-left-color: #f5c842; }
+.general-stat.heal      { border-left-color: #44dd88; }
+
+/* Resistências formato fixo */
+.res-val-group {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    min-width: 70px;
+    justify-content: flex-end;
+}
+.res-val-group .rv { font-weight: bold; font-size: 12px; color: #fff; min-width: 16px; text-align: right; }
+.res-val-group .rp { font-size: 10px; color: #888; }
+
+/* === PONTOS === */
+.points-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+    border: 1px solid rgba(255,215,0,0.15);
+}
+.points-bar .pts-text { font-size: 12px; color: #ccc; }
+.points-bar .pts-num { color: #ffd700; font-weight: bold; font-size: 14px; }
+.points-bar .pts-label { color: #888; font-size: 10px; margin-left: 6px; }
+.points-bar .pts-btn {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,215,0,0.4);
+    background: rgba(255,215,0,0.1);
+    color: #ffd700;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+.points-bar .pts-btn:hover { background: rgba(255,215,0,0.25); border-color: #ffd700; }
+</style>
+</head>
+<body>
+<div>
+<div class="label">PREVIEW A (Atualizado) — Sem equipamentos, com % Cura, Dano à esquerda / Resistências à direita</div>
+
+<div class="game-window">
+    <div class="window-header">
+        <h4>📊 Características</h4>
+        <button class="window-close">✕</button>
+    </div>
+    <div class="window-content">
+
+        <!-- AVATAR + NÍVEL -->
+        <div class="top-row">
+            <div class="avatar-area">
+                <div class="xp-tooltip">319 / 8944 XP</div>
+                <div class="avatar-box">🧙</div>
+                <div class="avatar-level">Nv.20</div>
+                <div class="xp-bar-mini"><div class="xp-bar-mini-fill"></div></div>
+            </div>
+            <div class="top-info">
+                <div class="primary-grid">
+                    <div class="primary-stat pa">
+                        <span class="stat-label"><span style="color:#3b82f6">◆</span> PA</span>
+                        <span class="stat-val">6</span>
+                    </div>
+                    <div class="primary-stat pm">
+                        <span class="stat-label"><span style="color:#22c55e">▶</span> PM</span>
+                        <span class="stat-val">3</span>
+                    </div>
+                    <div class="primary-stat pe">
+                        <span class="stat-label"><span style="color:#eab308">★</span> PE</span>
+                        <span class="stat-val">6</span>
+                    </div>
+                    <div class="primary-stat pv">
+                        <span class="stat-label"><span style="color:#e74c3c">❤</span> PV</span>
+                        <span class="stat-val">100/100</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ATRIBUTOS + COMBATE -->
+        <div class="dual-section">
+            <div class="stats-section">
+                <div class="section-title">Atributos</div>
+                <div class="attr-row strength"><span class="a-name">💪 FOR</span><span class="a-val">0</span></div>
+                <div class="attr-row agility"><span class="a-name">🏃 AGI</span><span class="a-val">0</span></div>
+                <div class="attr-row intelligence"><span class="a-name">🧠 INT</span><span class="a-val">0</span></div>
+                <div class="attr-row luck"><span class="a-name">🍀 SOR</span><span class="a-val">0</span></div>
+                <div class="attr-row wisdom"><span class="a-name">📖 SAB</span><span class="a-val">0</span></div>
+            </div>
+            <div class="stats-section">
+                <div class="section-title">Combate</div>
+                <div class="attr-row dodge"><span class="a-name">🟢 ESQ</span><span class="a-val">0</span></div>
+                <div class="attr-row block"><span class="a-name">🛡 BLQ</span><span class="a-val">0</span></div>
+                <div class="attr-row range"><span class="a-name">🎯 ALC</span><span class="a-val">0</span></div>
+                <div class="attr-row invocation"><span class="a-name">🔮 INV</span><span class="a-val">0</span></div>
+                <div class="attr-row initiative"><span class="a-name">⚡ INI</span><span class="a-val">0</span></div>
+                <div class="attr-row parada"><span class="a-name">🔵 PAR</span><span class="a-val">0%</span></div>
+                <div class="attr-row critico"><span class="a-name">✖ CRIT</span><span class="a-val">0%</span></div>
+            </div>
+        </div>
+
+        <!-- DANO GERAL + CURA lado a lado -->
+        <div class="general-pair">
+            <div class="general-stat dmg-geral">
+                <span class="gs-name">⚡ Dano%</span>
+                <span class="gs-val">0</span>
+            </div>
+            <div class="general-stat heal">
+                <span class="gs-name">💚 Cura%</span>
+                <span class="gs-val">0</span>
+            </div>
+        </div>
+
+        <!-- DANO ELEMENTAL (esquerda) + RESISTÊNCIAS (direita) -->
+        <div class="dual-section">
+            <div class="stats-section">
+                <div class="section-title">Dano%</div>
+                <div class="attr-row dmg-neutral"><span class="a-name">⚪ Neutro</span><span class="a-val">0</span></div>
+                <div class="attr-row dmg-water"><span class="a-name">💧 Água</span><span class="a-val">0</span></div>
+                <div class="attr-row dmg-earth"><span class="a-name">🟤 Terra</span><span class="a-val">50</span></div>
+                <div class="attr-row dmg-fire"><span class="a-name">🔥 Fogo</span><span class="a-val">0</span></div>
+                <div class="attr-row dmg-air"><span class="a-name">🍃 Ar</span><span class="a-val">0</span></div>
+            </div>
+            <div class="stats-section">
+                <div class="section-title">Resistências</div>
+                <div class="attr-row res-neutral">
+                    <span class="a-name">⚪ Neutro</span>
+                    <span class="res-val-group"><span class="rv">50</span><span class="rp">(20%)</span></span>
+                </div>
+                <div class="attr-row res-water">
+                    <span class="a-name">💧 Água</span>
+                    <span class="res-val-group"><span class="rv">0</span><span class="rp">(0%)</span></span>
+                </div>
+                <div class="attr-row res-earth">
+                    <span class="a-name">🟤 Terra</span>
+                    <span class="res-val-group"><span class="rv">0</span><span class="rp">(0%)</span></span>
+                </div>
+                <div class="attr-row res-fire">
+                    <span class="a-name">🔥 Fogo</span>
+                    <span class="res-val-group"><span class="rv">0</span><span class="rp">(0%)</span></span>
+                </div>
+                <div class="attr-row res-air">
+                    <span class="a-name">🍃 Ar</span>
+                    <span class="res-val-group"><span class="rv">0</span><span class="rp">(0%)</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- PONTOS -->
+        <div class="points-bar">
+            <span class="pts-text">⭐ Pontos: <span class="pts-num">190</span><span class="pts-label">Distribuir atributos</span></span>
+            <button class="pts-btn">+</button>
+        </div>
+
+    </div>
+</div>
+
+<div style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; max-width: 480px;">
+    <div style="color: #aaa; font-size: 12px; line-height: 1.6;">
+        <strong style="color: #fff;">Mudanças:</strong><br>
+        ✅ Nv.20 junto ao avatar (não mais em barra separada) — hover mostra XP<br>
+        ✅ Sem bônus verde — valores sempre brancos<br>
+        ✅ Valores com largura mínima fixa (layout estável)<br>
+        ✅ <strong style="color:#f5c842">⚡ Dano%</strong> e <strong style="color:#44dd88">💚 Cura%</strong> lado a lado como par<br>
+        ✅ Dano elemental (5 elementos) à esquerda / Resistências à direita<br>
+        ✅ Removido "Elem" (distribui automático nos 5 elementos)<br>
+    </div>
+</div>
+</div>
+</body>
+</html>

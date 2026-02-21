@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Preview Build Nv20 - Troll 4p</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#1a1a2e; color:#ddd; font-family:'Segoe UI',sans-serif; display:flex; justify-content:center; gap:24px; padding:20px; flex-wrap:wrap; }
+
+.game-window {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid #334;
+    border-radius: 8px;
+    width: 480px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.window-header {
+    background: linear-gradient(90deg, #2a2a4a, #1a1a3e);
+    padding: 8px 12px;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #334;
+    display:flex; justify-content:space-between; align-items:center;
+}
+.window-header h4 { color:#b8a9ff; font-size:14px; }
+.window-content { padding: 8px; }
+
+.stats-section {
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 6px;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+}
+.stats-section-title {
+    color: #888;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.attributes-grid { display:flex; flex-direction:column; gap:2px; }
+.attributes-grid:not(.single-col) { display:grid; grid-template-columns:1fr 1fr; gap:2px 8px; }
+
+.attribute-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border-left: 3px solid rgba(255,255,255,0.1);
+    font-size: 12px;
+    background: rgba(255,255,255,0.02);
+}
+.attribute-name { color: #aaa; font-size: 11px; }
+.attribute-value { color: #fff; font-weight: bold; font-size: 12px; }
+.attribute-bonus { color: #5f5; font-size: 10px; margin-left: 3px; }
+
+/* Cores especiais por tipo */
+.pa-row { border-left-color: #ffd700; background: rgba(255,215,0,0.08); }
+.pa-row .attribute-name { color: #ffd700; }
+.pa-row .attribute-value { color: #ffd700; }
+.pm-row { border-left-color: #4a9eff; background: rgba(74,158,255,0.08); }
+.pm-row .attribute-name { color: #4a9eff; }
+.pm-row .attribute-value { color: #4a9eff; }
+.pe-row { border-left-color: #44ddaa; background: rgba(68,221,170,0.08); }
+.pe-row .attribute-name { color: #44ddaa; }
+.pe-row .attribute-value { color: #44ddaa; }
+.pv-row { border-left-color: #ff4444; background: rgba(255,68,68,0.08); }
+.pv-row .attribute-name { color: #ff4444; }
+.pv-row .attribute-value { color: #ff4444; }
+
+.strength { border-left-color: #b8860b; }
+.agility { border-left-color: #32cd32; }
+.intelligence { border-left-color: #ff4422; }
+.luck { border-left-color: #4a9eff; }
+.wisdom { border-left-color: #da70d6; }
+
+.dmg_geral { border-left-color: #ff6347 !important; background: rgba(255,99,71,0.12) !important; }
+
+.icon-attr { font-size:10px; margin-right:2px; }
+.icon-pa { color:#ffd700; }
+.icon-pm { color:#4a9eff; }
+.icon-pe { color:#44ddaa; }
+.icon-heart { color:#ff4444; font-size:10px; margin-right:2px; }
+
+.avatar-section {
+    display:flex; align-items:center; gap:8px; margin-bottom:4px;
+}
+.avatar-icon {
+    width:48px; height:48px; background:rgba(0,0,0,0.3);
+    border:2px solid #555; border-radius:8px;
+    display:flex; align-items:center; justify-content:center; font-size:28px;
+}
+.level-text {
+    color:#b8a9ff; font-weight:bold; font-size:12px;
+    padding:3px 8px; background:linear-gradient(135deg,rgba(123,104,238,0.12),rgba(0,0,0,0.2));
+    border-radius:4px; text-align:center;
+}
+
+/* Equip sidebar */
+.equip-panel {
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border: 1px solid #334;
+    border-radius: 8px;
+    width: 320px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+.equip-slot {
+    display:flex; align-items:center; gap:8px;
+    padding:4px 8px; border-bottom:1px solid rgba(255,255,255,0.04);
+    font-size:11px;
+}
+.equip-slot:hover { background:rgba(255,255,255,0.03); }
+.slot-icon { width:28px; height:28px; background:rgba(0,0,0,0.3); border-radius:4px;
+    display:flex; align-items:center; justify-content:center; font-size:16px;
+    border:1px solid rgba(255,165,0,0.5); /* raro = laranja */
+}
+.slot-icon.lendario { border-color:rgba(153,68,238,0.7); box-shadow:0 0 6px rgba(153,68,238,0.4); }
+.slot-name { color:#ffa500; font-weight:bold; font-size:10px; }
+.slot-name.lendario { color:#9944ee; }
+.slot-stats { color:#888; font-size:9px; }
+.slot-label { color:#555; font-size:9px; min-width:55px; }
+
+.set-bonus {
+    padding:6px 8px; margin:4px 8px 8px;
+    background:rgba(255,165,0,0.08); border:1px solid rgba(255,165,0,0.3);
+    border-radius:6px; font-size:10px;
+}
+.set-bonus .set-title { color:#ffa500; font-weight:bold; font-size:11px; margin-bottom:3px; }
+.set-bonus .set-stat { color:#ccc; }
+.set-bonus .set-primary { color:#ffd700; font-weight:bold; }
+
+.build-title {
+    text-align:center; padding:12px;
+    color:#ffa500; font-size:16px; font-weight:bold;
+    text-shadow: 0 0 10px rgba(255,165,0,0.3);
+}
+.elem-icon { font-size:10px; }
+</style>
+</head>
+<body>
+
+<div>
+    <div class="build-title">Build Hipotética: Guerreiro de Terra — Nv20</div>
+
+    <!-- JANELA DE CARACTERÍSTICAS -->
+    <div class="game-window">
+        <div class="window-header">
+            <h4>📊 Características</h4>
+        </div>
+        <div class="window-content">
+            <!-- Avatar + Level + PA/PM/PE/PV -->
+            <div class="avatar-section">
+                <div class="avatar-icon">🧙</div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:3px;">
+                    <div class="level-text">Nv.20 (0/894)</div>
+                    <div class="stats-section" style="margin-bottom:0;">
+                        <div class="attributes-grid" style="grid-template-columns:1fr 1fr;">
+                            <div class="attribute-row pa-row">
+                                <span class="attribute-name"><span class="icon-attr icon-pa">◆</span> PA</span>
+                                <span><span class="attribute-value">8</span><span class="attribute-bonus">(+2)</span></span>
+                            </div>
+                            <div class="attribute-row pm-row">
+                                <span class="attribute-name"><span class="icon-attr icon-pm">▶</span> PM</span>
+                                <span><span class="attribute-value">4</span><span class="attribute-bonus">(+1)</span></span>
+                            </div>
+                            <div class="attribute-row pe-row">
+                                <span class="attribute-name"><span class="icon-attr icon-pe">★</span> PE</span>
+                                <span><span class="attribute-value">6</span><span class="attribute-bonus"></span></span>
+                            </div>
+                            <div class="attribute-row pv-row">
+                                <span class="attribute-name"><span class="icon-heart">❤</span> PV</span>
+                                <span><span class="attribute-value">596/596</span><span class="attribute-bonus">(+546)</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Atributos + Combate lado a lado -->
+            <div style="display:flex; gap:4px; margin-bottom:4px;">
+                <!-- Atributos Primários -->
+                <div class="stats-section" style="flex:1; margin-bottom:0;">
+                    <div class="stats-section-title">Atributos</div>
+                    <div class="attributes-grid single-col">
+                        <div class="attribute-row strength">
+                            <span class="attribute-name">💪 FOR</span>
+                            <span><span class="attribute-value">163</span><span class="attribute-bonus">(+153)</span></span>
+                        </div>
+                        <div class="attribute-row agility">
+                            <span class="attribute-name">🏃 AGI</span>
+                            <span><span class="attribute-value">45</span><span class="attribute-bonus">(+35)</span></span>
+                        </div>
+                        <div class="attribute-row intelligence">
+                            <span class="attribute-name">🧠 INT</span>
+                            <span><span class="attribute-value">18</span><span class="attribute-bonus">(+8)</span></span>
+                        </div>
+                        <div class="attribute-row luck">
+                            <span class="attribute-name">🍀 SOR</span>
+                            <span><span class="attribute-value">20</span><span class="attribute-bonus">(+10)</span></span>
+                        </div>
+                        <div class="attribute-row wisdom">
+                            <span class="attribute-name">📚 SAB</span>
+                            <span><span class="attribute-value">10</span><span class="attribute-bonus"></span></span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Combate -->
+                <div class="stats-section" style="flex:1; margin-bottom:0;">
+                    <div class="stats-section-title">Combate</div>
+                    <div class="attributes-grid single-col">
+                        <div class="attribute-row">
+                            <span class="attribute-name">🛡️ ESQ</span>
+                            <span><span class="attribute-value">5</span><span class="attribute-bonus">(+5)</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">🔰 BLQ</span>
+                            <span><span class="attribute-value">24</span><span class="attribute-bonus">(+24)</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">🎯 ALC</span>
+                            <span><span class="attribute-value">1</span><span class="attribute-bonus">(+1)</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">✳️ INV</span>
+                            <span><span class="attribute-value">0</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">⚡ INI</span>
+                            <span><span class="attribute-value">0</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">🛡️ PAR</span>
+                            <span><span class="attribute-value">2%</span><span class="attribute-bonus">(+2)</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">⚔️ CRIT</span>
+                            <span><span class="attribute-value">12%</span><span class="attribute-bonus">(+12)</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dano% + Resistências lado a lado -->
+            <div style="display:flex; gap:4px; margin-bottom:4px;">
+                <!-- Dano% -->
+                <div class="stats-section" style="flex:1; margin-bottom:0;">
+                    <div class="stats-section-title">Dano%</div>
+                    <div class="attributes-grid single-col">
+                        <div class="attribute-row dmg_geral">
+                            <span class="attribute-name" style="color:#ff6347;font-weight:bold">⚡ Geral</span>
+                            <span><span class="attribute-value" style="color:#ff6347">10</span><span class="attribute-bonus">(+10)</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">⚪ Neutro</span>
+                            <span><span class="attribute-value">0</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">💧 Agua</span>
+                            <span><span class="attribute-value">0</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">🌍 Terra</span>
+                            <span><span class="attribute-value">0</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">🔥 Fogo</span>
+                            <span><span class="attribute-value">0</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">💨 Ar</span>
+                            <span><span class="attribute-value">0</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">✨ Elem</span>
+                            <span><span class="attribute-value">0</span></span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Resistências -->
+                <div class="stats-section" style="flex:1; margin-bottom:0;">
+                    <div class="stats-section-title">Resistências</div>
+                    <div class="attributes-grid single-col">
+                        <div class="attribute-row">
+                            <span class="attribute-name">⚪ Neutro</span>
+                            <span><span class="attribute-value">35 (15%)</span><span class="attribute-bonus">(+35)</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">💧 Agua</span>
+                            <span><span class="attribute-value">6 (3%)</span><span class="attribute-bonus">(+6)</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">🌍 Terra</span>
+                            <span><span class="attribute-value">22 (10%)</span><span class="attribute-bonus">(+22)</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">🔥 Fogo</span>
+                            <span><span class="attribute-value">2 (1%)</span><span class="attribute-bonus">(+2)</span></span>
+                        </div>
+                        <div class="attribute-row">
+                            <span class="attribute-name">💨 Ar</span>
+                            <span><span class="attribute-value">2 (1%)</span><span class="attribute-bonus">(+2)</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PAINEL DE EQUIPAMENTOS -->
+<div>
+    <div class="equip-panel">
+        <div class="window-header">
+            <h4>🛡️ Equipamento (9 itens)</h4>
+        </div>
+        <div style="padding:4px;">
+            <div class="equip-slot">
+                <div class="slot-label">Capacete</div>
+                <div class="slot-icon">🧌</div>
+                <div>
+                    <div class="slot-name">Capacete de Troll</div>
+                    <div class="slot-stats">PV+55 FOR+14 ResN+4 BLQ+2</div>
+                </div>
+            </div>
+            <div class="equip-slot">
+                <div class="slot-label">Peitoral</div>
+                <div class="slot-icon">🧌</div>
+                <div>
+                    <div class="slot-name">Couro de Troll</div>
+                    <div class="slot-stats">PV+70 FOR+12 ResN+6 ResT+4 BLQ+2</div>
+                </div>
+            </div>
+            <div class="equip-slot">
+                <div class="slot-label">Cinto</div>
+                <div class="slot-icon">🧌</div>
+                <div>
+                    <div class="slot-name">Cinto de Troll</div>
+                    <div class="slot-stats">PV+30 FOR+10 BLQ+3 ResN+4 ResG+1</div>
+                </div>
+            </div>
+            <div class="equip-slot">
+                <div class="slot-label">Arma</div>
+                <div class="slot-icon">🧌</div>
+                <div>
+                    <div class="slot-name">Porrete de Troll</div>
+                    <div class="slot-stats">FOR+14 CRIT+2 PV+15 | 22-32 Terra</div>
+                </div>
+            </div>
+            <div class="equip-slot">
+                <div class="slot-label">Botas</div>
+                <div class="slot-icon">🐻</div>
+                <div>
+                    <div class="slot-name">Botas de Urso</div>
+                    <div class="slot-stats">FOR+10 PV+25 PM+1 BLQ+3 ResT+2</div>
+                </div>
+            </div>
+            <div class="equip-slot">
+                <div class="slot-label">Capa</div>
+                <div class="slot-icon">🦎</div>
+                <div>
+                    <div class="slot-name">Capa de Escamas</div>
+                    <div class="slot-stats">AGI+12 FOR+7 ESQ+5 ResA+4 CRIT+1</div>
+                </div>
+            </div>
+            <div class="equip-slot">
+                <div class="slot-label">Amuleto</div>
+                <div class="slot-icon lendario">✨</div>
+                <div>
+                    <div class="slot-name lendario">Amuleto do Destino</div>
+                    <div class="slot-stats">PV+60 FOR+8 INT+8 AGI+8 SOR+10 PA+1 ALC+1</div>
+                </div>
+            </div>
+            <div class="equip-slot">
+                <div class="slot-label">Anel</div>
+                <div class="slot-icon">💍</div>
+                <div>
+                    <div class="slot-name">Anel da Besta</div>
+                    <div class="slot-stats">PV+15 FOR+8 AGI+5 CRIT+4</div>
+                </div>
+            </div>
+            <div class="equip-slot">
+                <div class="slot-label">Off-hand</div>
+                <div class="slot-icon">🛡️</div>
+                <div>
+                    <div class="slot-name">Escudo de Cristal</div>
+                    <div class="slot-stats">PV+40 BLQ+8 ResT+6 ResN+4 ResG+1</div>
+                </div>
+            </div>
+
+            <!-- Set Bonus -->
+            <div class="set-bonus">
+                <div class="set-title">🧌 Conjunto do Troll (4/4)</div>
+                <div class="set-stat">FOR +35 | ResN +15 | ResT +8 | PV +200</div>
+                <div class="set-primary">◆ PA +1</div>
+            </div>
+
+            <!-- Distribuição de Pontos -->
+            <div class="stats-section" style="margin:4px;">
+                <div class="stats-section-title">Pontos Distribuídos (Nv20 = 19 ups)</div>
+                <div style="font-size:10px; color:#aaa; line-height:1.6;">
+                    <div><span style="color:#ffd700">Fundamentos (57 pts):</span> FOR +35, AGI +10, PV +12 (=36 HP)</div>
+                    <div><span style="color:#ff6347">Tática (19 pts):</span> Dano% +10, CRIT +5, BLQ×2 (+6), PAR +2</div>
+                    <div><span style="color:#4a9eff">Ofensiva (38 pts):</span> DanoMelee +20%, DanoAlvo +18%</div>
+                </div>
+            </div>
+
+            <!-- Dano Simulado -->
+            <div class="stats-section" style="margin:4px; border-color:rgba(255,99,71,0.3); background:rgba(255,99,71,0.06);">
+                <div class="stats-section-title" style="color:#ff6347; border-bottom-color:rgba(255,99,71,0.2);">Dano vs Urso Primordial (Nv20, 420 HP)</div>
+                <div style="font-size:10px; color:#ccc; line-height:1.8;">
+                    <div>🪓 <b>Pancada de Troll</b> (4 PA) — 22-32 Terra, escala FOR</div>
+                    <div style="color:#888">Base 27 × (1 + 163×0.7%) × 1.10 Dano% = <span style="color:#ff6347;font-weight:bold">63.6</span></div>
+                    <div style="color:#888">Após resist terra 22 (9.9%): <span style="color:#ff6347;font-weight:bold">~57 dano</span> | crit: <span style="color:#ffd700;font-weight:bold">~75 dano</span></div>
+                    <div style="margin-top:4px;color:#fff">⚔️ 8 PA ÷ 4 custo = <b>2 ataques/turno</b></div>
+                    <div style="color:#5f5">📊 Média: <b>~118 dano/turno</b> → mata em <b>~4 turnos</b></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

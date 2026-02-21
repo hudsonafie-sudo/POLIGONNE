@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <defs>
+    <linearGradient id="sg" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#f5d0b8"/>
+      <stop offset="100%" stop-color="#e8b89a"/>
+    </linearGradient>
+  </defs>
+  <!-- Ankle/leg -->
+  <path d="M16 2 L16 26 C16 26 16 32 14 36 C12 40 6 42 4 42 C2 42 2 44 4 46 L36 46 C40 46 44 44 44 40 C44 36 40 34 36 34 L28 34 C26 34 24 32 24 28 L24 2z" fill="url(#sg)" stroke="#e0a888" stroke-width="0.5"/>
+  <!-- Ankle bone hint -->
+  <path d="M18 30 C19 28 18 26 18 26" stroke="#daa888" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.5"/>
+</svg>

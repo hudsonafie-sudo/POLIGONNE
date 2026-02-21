@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Preview: Pinheiro (T1 Lenhador) — Modelo v1</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+h1 { text-align: center; color: #f0c040; margin-bottom: 4px; font-size: 22px; }
+.subtitle { text-align: center; color: #888; margin-bottom: 20px; font-size: 13px; }
+
+.row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
+.card {
+    background: #222240;
+    border-radius: 12px;
+    padding: 16px;
+    border: 2px solid #333;
+    text-align: center;
+}
+.card h3 { font-size: 13px; color: #aaa; margin-bottom: 8px; }
+canvas { border: 1px solid #2a2a40; border-radius: 6px; display: block; margin: 0 auto; }
+.label { font-size: 10px; color: #666; margin-top: 4px; }
+
+.info-box {
+    background: #1a1a30;
+    border-radius: 10px;
+    padding: 16px;
+    max-width: 860px;
+    margin: 0 auto 20px auto;
+    font-size: 13px;
+    line-height: 1.7;
+    border: 1px solid #333;
+}
+.info-box b { color: #f0c040; }
+.info-box .data { color: #80c0ff; }
+.info-box .species { color: #8fc98f; font-style: italic; }
+
+.scene-wrap {
+    background: #222240;
+    border-radius: 12px;
+    padding: 16px;
+    border: 2px solid #444;
+    max-width: 860px;
+    margin: 0 auto 24px auto;
+    text-align: center;
+}
+.scene-wrap h3 { color: #f0c040; margin-bottom: 10px; font-size: 14px; }
+
+.ref-table { border-collapse: collapse; margin: 10px auto; font-size: 12px; }
+.ref-table th { background: #2a2a40; padding: 6px 12px; color: #f0c040; }
+.ref-table td { background: #1a1a30; padding: 5px 12px; border: 1px solid #333; }
+.ref-table .tier1 { color: #aaa; }
+.ref-table .tier2 { color: #5a9aff; }
+.ref-table .tier3 { color: #ff9a5a; }
+</style>
+</head>
+<body>
+
+<h1>Modelo v1: Pinheiro — Árvore Coletável T1 (Lenhador)</h1>
+<p class="subtitle">Baseado nos dados existentes: <code>coleta_tronco_pinho</code> — "Tronco de Pinho"</p>
+
+<div class="info-box">
+    <b>Dados consultados:</b> <span class="data">dados/recursos_coleta.js</span><br>
+    <table class="ref-table">
+        <tr><th>Tier</th><th>Recurso</th><th>Árvore no mapa</th><th>Zona</th></tr>
+        <tr class="tier1"><td>T1</td><td>Tronco de Pinho</td><td>Pinheiro (este modelo)</td><td>Campos Norte, Bosque Oeste</td></tr>
+        <tr class="tier2"><td>T2</td><td>Tronco de Carvalho</td><td>Carvalho (próximo modelo)</td><td>Colinas Leste, Pradaria Sul</td></tr>
+        <tr class="tier3"><td>T3</td><td>Tronco de Mogno</td><td>Mogno (próximo modelo)</td><td>Ruínas, zonas avançadas</td></tr>
+    </table>
+    <br>
+    <b>Espécie:</b> <span class="species">Pinheiro (Pinus)</span> — copa cônica/triangular densa, tronco reto marrom-avermelhado com casca escamosa, galhos horizontais em camadas, agulhas verdes escuras.<br>
+    <b>Diferencial vs decorativa:</b> Pinheiro é facilmente distinto de árvores genéricas de folha larga. Copa triangular e densa vs copa arredondada das decorativas.
+</div>
+
+<!-- ZOOM LEVELS -->
+<div class="row">
+    <div class="card">
+        <h3>Tamanho Real (1x)</h3>
+        <canvas id="c1x" width="80" height="110"></canvas>
+        <div class="label">~36px tile</div>
+    </div>
+    <div class="card">
+        <h3>Zoom 2x</h3>
+        <canvas id="c2x" width="160" height="220"></canvas>
+        <div class="label">Detalhes visíveis</div>
+    </div>
+    <div class="card">
+        <h3>Zoom 4x (detalhe)</h3>
+        <canvas id="c4x" width="320" height="440"></canvas>
+        <div class="label">Casca, agulhas, galhos</div>
+    </div>
+</div>
+
+<!-- VARIANTES -->
+<div class="row">
+    <div class="card">
+        <h3>Var. A — Alto e esguio</h3>
+        <canvas id="vA" width="100" height="130"></canvas>
+    </div>
+    <div class="card">
+        <h3>Var. B — Largo e baixo</h3>
+        <canvas id="vB" width="100" height="130"></canvas>
+    </div>
+    <div class="card">
+        <h3>Var. C — Jovem/mudinha</h3>
+        <canvas id="vC" width="100" height="130"></canvas>
+    </div>
+    <div class="card">
+        <h3>Var. D — Velho/torto</h3>
+        <canvas id="vD" width="100" height="130"></canvas>
+    </div>
+</div>
+
+<!-- CENA: Pinheiros coletáveis no meio de árvores decorativas genéricas -->
+<div class="scene-wrap">
+    <h3>Cena: Pinheiros coletáveis entre árvores decorativas genéricas</h3>
+    <canvas id="scene" width="820" height="280"></canvas>
+    <div class="label" style="margin-top:8px">
+        Pinheiros (coletáveis, T1 Lenhador) claramente distintos das árvores genéricas de folha larga (decorativas)
+    </div>
+</div>
+
+<script>
+// ============================================================
+//  PINHEIRO DETALHADO — Pinus (conífero)
+//  Referência: Pinus sylvestris / Pinus pinaster
+//  Copa cônica triangular, tronco reto marrom-avermelhado,
+//  casca escamosa, galhos em camadas, agulhas densas
+// ============================================================
+
+// Pseudo-random com seed
+function makeRng(seed) {
+    var _s = (seed || 0) + 137;
+    return function() { _s = (_s * 1103515245 + 12345) & 0x7fffffff; return _s / 0x7fffffff; };
+}
+
+function drawPine(ctx, cx, cy, scale, opts) {
+    opts = opts || {};
+    var s = scale || 1;
+    var height = opts.height || 1;
+    var width = opts.width || 1;
+    var lean = opts.lean || 0;
+    var young = opts.young || false;
+    var old = opts.old || false;
+    var seed = opts.seed || 0;
+    var rng = makeRng(seed);
+
+    var trunkH = (young ? 28 : 46) * height * s;
+    var trunkW = (young ? 2.5 : 4) * s;
+    var leanPx = lean * 6 * s;
+    var copaW = (young ? 12 : 20) * width * s;
+    var copaH = trunkH * (young ? 0.6 : 0.72);
+    var copaStartY = cy - trunkH * 0.35;
+
+    // ---- SOMBRA ----
+    ctx.beginPath();
+    ctx.ellipse(cx + 3*s, cy + 2*s, (young ? 8 : 13)*s*width, (young ? 4 : 6)*s, 0.1, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.fill();
+
+    // ---- TRONCO ----
+    var topX = cx + leanPx;
+    var topY = cy - trunkH;
+    var baseWidthMul = old ? 2.2 : 1.8;
+
+    // Forma do tronco (base mais larga)
+    ctx.beginPath();
+    ctx.moveTo(cx - trunkW * baseWidthMul, cy);
+    ctx.quadraticCurveTo(cx - trunkW * 1.4, cy - 4*s, cx - trunkW, cy - 10*s);
+    ctx.lineTo(topX - trunkW * 0.5, topY + copaH * 0.4);
+    ctx.lineTo(topX + trunkW * 0.5, topY + copaH * 0.4);
+    ctx.lineTo(cx + trunkW, cy - 10*s);
+    ctx.quadraticCurveTo(cx + trunkW * 1.4, cy - 4*s, cx + trunkW * baseWidthMul, cy);
+    ctx.closePath();
+
+    // Gradiente do tronco — marrom-avermelhado (típico do pinheiro)
+    var tGrad = ctx.createLinearGradient(cx - trunkW*2, cy, cx + trunkW*2, cy);
+    tGrad.addColorStop(0, '#3a1e0c');
+    tGrad.addColorStop(0.3, '#5a3018');
+    tGrad.addColorStop(0.5, '#6a3a1e');
+    tGrad.addColorStop(0.7, '#7a4428');
+    tGrad.addColorStop(1, '#4a2210');
+    ctx.fillStyle = tGrad;
+    ctx.fill();
+
+    // Contorno
+    ctx.strokeStyle = 'rgba(30,15,5,0.4)';
+    ctx.lineWidth = 0.4 * s;
+    ctx.stroke();
+
+    // ---- CASCA ESCAMOSA (textura do pinheiro) ----
+    var barkH = trunkH * 0.6;
+    var numScales = Math.floor(barkH / (3.5 * s));
+    for (var i = 0; i < numScales; i++) {
+        var sy = cy - 5*s - i * (barkH / numScales);
+        var prog = i / numScales;
+        var sx = cx + leanPx * prog * 0.4;
+        var sw = trunkW * (baseWidthMul - prog * (baseWidthMul - 0.6));
+
+        // Escama (polígono irregular)
+        var scaleW = sw * (0.4 + rng() * 0.5);
+        var scaleH = (1.5 + rng() * 1.5) * s;
+        var offsetX = (rng() - 0.5) * sw * 0.8;
+
+        ctx.beginPath();
+        ctx.moveTo(sx + offsetX - scaleW, sy);
+        ctx.quadraticCurveTo(sx + offsetX, sy - scaleH, sx + offsetX + scaleW, sy);
+        ctx.quadraticCurveTo(sx + offsetX, sy + scaleH * 0.5, sx + offsetX - scaleW, sy);
+        ctx.closePath();
+
+        // Alternar tons de marrom para criar padrão escamoso
+        var shade = rng();
+        if (shade > 0.6) {
+            ctx.fillStyle = 'rgba(90,55,30,' + (0.25 + rng()*0.2) + ')';
+        } else if (shade > 0.3) {
+            ctx.fillStyle = 'rgba(60,30,15,' + (0.2 + rng()*0.15) + ')';
+        } else {
+            ctx.fillStyle = 'rgba(110,70,40,' + (0.15 + rng()*0.15) + ')';
+        }
+        ctx.fill();
+    }
+
+    // Linhas verticais sutis (fibras da casca)
+    ctx.strokeStyle = 'rgba(40,20,8,0.1)';
+    ctx.lineWidth = 0.3 * s;
+    for (var i = 0; i < 4; i++) {
+        var lx = cx + (rng()-0.5) * trunkW * 1.5;
+        ctx.beginPath();
+        ctx.moveTo(lx, cy - 3*s);
+        ctx.lineTo(lx + leanPx * 0.3, cy - trunkH * 0.5);
+        ctx.stroke();
+    }
+
+    // ---- RAÍZES EXPOSTAS ----
+    if (!young) {
+        for (var i = 0; i < 3; i++) {
+            var side = i === 0 ? -1 : (i === 1 ? 1 : (rng() > 0.5 ? -1 : 1));
+            var rx = cx + side * trunkW * (1.2 + rng() * 0.8);
+            var ry = cy + 1*s;
+            ctx.beginPath();
+            ctx.moveTo(cx + side * trunkW * 0.8, cy - 1*s);
+            ctx.quadraticCurveTo(rx, ry - 2*s, rx + side * (3 + rng()*3)*s, ry + 1*s);
+            ctx.lineTo(rx + side * (1 + rng()*2)*s, ry + 2*s);
+            ctx.quadraticCurveTo(rx - side, ry, cx + side * trunkW * 0.5, cy);
+            ctx.closePath();
+            ctx.fillStyle = '#4a2810';
+            ctx.fill();
+        }
+    }
+
+    // ---- GALHOS (visíveis abaixo da copa) ----
+    if (!young) {
+        for (var i = 0; i < 3; i++) {
+            var bY = copaStartY + copaH * (0.55 + i * 0.15);
+            var bProg = (cy - bY) / trunkH;
+            var bX = cx + leanPx * bProg;
+            var side = (i % 2 === 0) ? -1 : 1;
+            var bLen = (6 + rng() * 5) * s;
+
+            ctx.beginPath();
+            ctx.moveTo(bX, bY);
+            ctx.quadraticCurveTo(
+                bX + side * bLen * 0.6, bY - 1*s,
+                bX + side * bLen, bY + 2*s
+            );
+            ctx.strokeStyle = 'rgba(70,40,20,' + (0.4 + rng()*0.3) + ')';
+            ctx.lineWidth = (1.2 + rng() * 0.5) * s;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+        }
+    }
+
+    // ---- COPA CÔNICA (triangular em camadas) ----
+    var numLayers = young ? 4 : 7;
+    var copaTopY = cy - trunkH + 2*s;
+    var layerH = copaH / numLayers;
+
+    for (var layer = numLayers - 1; layer >= 0; layer--) {
+        var lY = copaTopY + layer * layerH;
+        var progress = layer / numLayers; // 0=topo, 1=base
+        var lW = copaW * (0.15 + progress * 0.85);
+        var lH = layerH * 1.4;
+        var lX = topX + (cx - topX) * progress * 0.3;
+
+        // Cada camada tem overlap com a anterior (galhos sobrepostos)
+        // Sombra da camada
+        ctx.beginPath();
+        ctx.moveTo(lX, lY - lH * 0.3);
+        ctx.lineTo(lX - lW * 1.05, lY + lH * 0.7);
+        ctx.lineTo(lX + lW * 1.05, lY + lH * 0.7);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(10,35,10,' + (0.3 + progress * 0.15) + ')';
+        ctx.fill();
+
+        // Camada principal
+        ctx.beginPath();
+        ctx.moveTo(lX, lY - lH * 0.5);
+        // Lado esquerdo com irregularidade (agulhas)
+        var steps = 5;
+        for (var j = 0; j <= steps; j++) {
+            var t = j / steps;
+            var px = lX - lW * t;
+            var py = lY - lH * 0.5 + (lH * 1.1) * t;
+            // Irregularidade nas bordas (agulhas salientes)
+            var jitter = (rng() - 0.5) * 2.5 * s;
+            ctx.lineTo(px + jitter, py + (rng()-0.5)*1.5*s);
+        }
+        // Base
+        ctx.lineTo(lX, lY + lH * 0.6 + rng()*s);
+        // Lado direito
+        for (var j = steps; j >= 0; j--) {
+            var t = j / steps;
+            var px = lX + lW * t;
+            var py = lY - lH * 0.5 + (lH * 1.1) * t;
+            var jitter = (rng() - 0.5) * 2.5 * s;
+            ctx.lineTo(px + jitter, py + (rng()-0.5)*1.5*s);
+        }
+        ctx.closePath();
+
+        // Gradiente verde escuro → verde médio
+        var layerGrad = ctx.createLinearGradient(lX - lW, lY, lX + lW, lY);
+        var baseG = Math.floor(50 + progress * 15);
+        layerGrad.addColorStop(0, 'rgba(15,' + (baseG - 10) + ',12,0.9)');
+        layerGrad.addColorStop(0.3, 'rgba(22,' + (baseG + 10) + ',18,0.95)');
+        layerGrad.addColorStop(0.6, 'rgba(30,' + (baseG + 25) + ',22,0.9)');
+        layerGrad.addColorStop(1, 'rgba(18,' + (baseG - 5) + ',14,0.85)');
+        ctx.fillStyle = layerGrad;
+        ctx.fill();
+
+        // ---- TEXTURA DE AGULHAS sobre cada camada ----
+        var needleCount = Math.floor(lW * lH / (8 * s * s));
+        for (var n = 0; n < needleCount; n++) {
+            var nx = lX + (rng() - 0.5) * lW * 1.6;
+            var ny = lY + (rng() - 0.3) * lH * 0.8;
+            // Verificar se está dentro da forma triangular aprox.
+            var relY = (ny - (lY - lH*0.5)) / (lH * 1.2);
+            var maxX = lW * relY;
+            if (Math.abs(nx - lX) > maxX) continue;
+
+            var needleLen = (1.5 + rng() * 2) * s;
+            var needleAngle = -Math.PI/2 + (rng() - 0.5) * 1.2;
+
+            ctx.beginPath();
+            ctx.moveTo(nx, ny);
+            ctx.lineTo(
+                nx + Math.cos(needleAngle) * needleLen,
+                ny + Math.sin(needleAngle) * needleLen
+            );
+            var nGreen = Math.floor(60 + rng() * 70);
+            ctx.strokeStyle = 'rgba(20,' + nGreen + ',15,' + (0.2 + rng()*0.25) + ')';
+            ctx.lineWidth = 0.4 * s;
+            ctx.stroke();
+        }
+
+        // Highlight de luz no lado esquerdo de cada camada
+        if (rng() > 0.3) {
+            ctx.beginPath();
+            ctx.ellipse(lX - lW * 0.3, lY + lH * 0.1, lW * 0.25, lH * 0.2, -0.3, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(60,' + Math.floor(120 + rng()*40) + ',45,' + (0.06 + rng()*0.06) + ')';
+            ctx.fill();
+        }
+    }
+
+    // ---- PONTA DO TOPO (agulhas no ápice) ----
+    ctx.beginPath();
+    ctx.moveTo(topX, copaTopY - 5*s);
+    ctx.lineTo(topX - 2*s, copaTopY + 2*s);
+    ctx.lineTo(topX + 2*s, copaTopY + 2*s);
+    ctx.closePath();
+    ctx.fillStyle = '#1a5518';
+    ctx.fill();
+
+    // Agulha do topo (mastro)
+    ctx.beginPath();
+    ctx.moveTo(topX, copaTopY - 5*s);
+    ctx.lineTo(topX, copaTopY - 8*s);
+    ctx.strokeStyle = '#2a6a22';
+    ctx.lineWidth = 0.6 * s;
+    ctx.stroke();
+
+    // ---- PINHAS (cones) penduradas ----
+    if (!young) {
+        var numCones = 2 + Math.floor(rng() * 2);
+        for (var i = 0; i < numCones; i++) {
+            var cLayer = 2 + Math.floor(rng() * (numLayers - 3));
+            var cY = copaTopY + cLayer * layerH + layerH * 0.8;
+            var cProg = cLayer / numLayers;
+            var cMaxW = copaW * (0.15 + cProg * 0.85);
+            var cX = topX + (cx - topX) * cProg * 0.3 + (rng() - 0.5) * cMaxW * 0.8;
+
+            // Haste
+            ctx.beginPath();
+            ctx.moveTo(cX, cY);
+            ctx.lineTo(cX, cY + 2*s);
+            ctx.strokeStyle = '#5a3a18';
+            ctx.lineWidth = 0.4 * s;
+            ctx.stroke();
+
+            // Pinha (forma oval)
+            ctx.beginPath();
+            ctx.ellipse(cX, cY + 4*s, 1.5*s, 2.5*s, 0, 0, Math.PI*2);
+            ctx.fillStyle = '#6a4a28';
+            ctx.fill();
+            // Escamas da pinha
+            ctx.beginPath();
+            ctx.ellipse(cX, cY + 3.5*s, 1*s, 1*s, 0, 0, Math.PI*2);
+            ctx.fillStyle = 'rgba(90,65,35,0.5)';
+            ctx.fill();
+        }
+    }
+
+    // ---- GRAMÍNEAS NA BASE ----
+    for (var i = 0; i < (young ? 2 : 4); i++) {
+        var gx = cx + (rng() - 0.5) * 10 * s;
+        var gy = cy + rng() * 2 * s;
+        ctx.beginPath();
+        ctx.moveTo(gx, gy);
+        ctx.quadraticCurveTo(gx + (rng()-0.5)*3*s, gy - 3*s, gx + (rng()-0.5)*2*s, gy - (2 + rng()*3)*s);
+        ctx.strokeStyle = 'rgba(50,100,40,' + (0.25 + rng()*0.25) + ')';
+        ctx.lineWidth = 0.5 * s;
+        ctx.stroke();
+    }
+
+    // ---- AGULHAS CAÍDAS NO CHÃO (detalhe) ----
+    if (s >= 2) {
+        ctx.strokeStyle = 'rgba(80,60,30,0.15)';
+        ctx.lineWidth = 0.3 * s;
+        for (var i = 0; i < 6; i++) {
+            var ax = cx + (rng()-0.5) * 16 * s;
+            var ay = cy + (rng()-0.5) * 4 * s;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(ax + (rng()-0.5)*3*s, ay + (rng()-0.5)*1*s);
+            ctx.stroke();
+        }
+    }
+}
+
+// ---- ÁRVORE GENÉRICA DE FOLHA LARGA (decorativa) ----
+function drawGenericTree(ctx, cx, cy, scale, seed) {
+    var s = scale || 1;
+    var rng = makeRng(seed || 0);
+
+    // Sombra
+    ctx.beginPath();
+    ctx.ellipse(cx + 2*s, cy + 2*s, 11*s, 5*s, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.fill();
+
+    // Tronco marrom genérico
+    ctx.beginPath();
+    ctx.moveTo(cx - 3*s, cy);
+    ctx.quadraticCurveTo(cx - 2.5*s, cy - 5*s, cx - 2*s, cy - 22*s);
+    ctx.lineTo(cx + 2*s, cy - 22*s);
+    ctx.quadraticCurveTo(cx + 2.5*s, cy - 5*s, cx + 3*s, cy);
+    ctx.closePath();
+    ctx.fillStyle = '#4a3018';
+    ctx.fill();
+
+    // Lado claro
+    ctx.beginPath();
+    ctx.moveTo(cx - 3*s, cy);
+    ctx.quadraticCurveTo(cx - 2.5*s, cy - 5*s, cx - 2*s, cy - 22*s);
+    ctx.lineTo(cx, cy - 22*s);
+    ctx.lineTo(cx, cy);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(80,55,30,0.3)';
+    ctx.fill();
+
+    // Copa ARREDONDADA (distinta do pinheiro cônico)
+    // Sombra base
+    ctx.beginPath();
+    ctx.ellipse(cx + 1*s, cy - 25*s, 14*s, 9*s, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#1a4a1c';
+    ctx.fill();
+
+    // Copa principal
+    ctx.beginPath();
+    ctx.ellipse(cx - 1*s, cy - 29*s, 12*s, 10*s, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#265a28';
+    ctx.fill();
+
+    // Copa superior
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 33*s, 9*s, 7*s, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#2e6e30';
+    ctx.fill();
+
+    // Topo
+    ctx.beginPath();
+    ctx.ellipse(cx - 1*s, cy - 37*s, 5*s, 4*s, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#367a38';
+    ctx.fill();
+
+    // Volumes de folhagem
+    for (var i = 0; i < 5; i++) {
+        ctx.beginPath();
+        var vx = cx + (rng()-0.5) * 14 * s;
+        var vy = cy - 26*s + (rng()-0.5) * 10 * s;
+        ctx.arc(vx, vy, (3 + rng()*3) * s, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(' + Math.floor(30+rng()*20) + ',' + Math.floor(80+rng()*40) + ',30,' + (0.3+rng()*0.2) + ')';
+        ctx.fill();
+    }
+
+    // Highlight
+    ctx.beginPath();
+    ctx.ellipse(cx - 3*s, cy - 35*s, 4*s, 2.5*s, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(80,180,70,0.12)';
+    ctx.fill();
+}
+
+// ---- FUNDO DE GRAMA ----
+function drawGrassBG(ctx, w, h) {
+    var g = ctx.createRadialGradient(w/2, h*0.75, 10, w/2, h*0.7, w);
+    g.addColorStop(0, '#3d7a3d');
+    g.addColorStop(1, '#2a5a2a');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, w, h);
+
+    var rng = makeRng(42);
+    ctx.strokeStyle = 'rgba(45,90,35,0.12)';
+    ctx.lineWidth = 0.5;
+    for (var i = 0; i < w * h / 250; i++) {
+        var gx = rng() * w, gy = rng() * h;
+        ctx.beginPath();
+        ctx.moveTo(gx, gy);
+        ctx.lineTo(gx + (rng()-0.5)*3, gy - 2 - rng()*3);
+        ctx.stroke();
+    }
+}
+
+// ============ RENDERS ============
+
+// 1x
+(function() {
+    var c = document.getElementById('c1x');
+    var ctx = c.getContext('2d');
+    drawGrassBG(ctx, 80, 110);
+    drawPine(ctx, 40, 88, 1, { seed: 1 });
+})();
+
+// 2x
+(function() {
+    var c = document.getElementById('c2x');
+    var ctx = c.getContext('2d');
+    drawGrassBG(ctx, 160, 220);
+    drawPine(ctx, 80, 178, 2, { seed: 1 });
+})();
+
+// 4x
+(function() {
+    var c = document.getElementById('c4x');
+    var ctx = c.getContext('2d');
+    drawGrassBG(ctx, 320, 440);
+    drawPine(ctx, 160, 358, 4, { seed: 1 });
+})();
+
+// Variante A — alto e esguio
+(function() {
+    var c = document.getElementById('vA');
+    var ctx = c.getContext('2d');
+    drawGrassBG(ctx, 100, 130);
+    drawPine(ctx, 50, 106, 1.2, { seed: 10, height: 1.15, width: 0.75 });
+})();
+
+// Variante B — largo e baixo
+(function() {
+    var c = document.getElementById('vB');
+    var ctx = c.getContext('2d');
+    drawGrassBG(ctx, 100, 130);
+    drawPine(ctx, 50, 108, 1.2, { seed: 25, height: 0.8, width: 1.3 });
+})();
+
+// Variante C — jovem
+(function() {
+    var c = document.getElementById('vC');
+    var ctx = c.getContext('2d');
+    drawGrassBG(ctx, 100, 130);
+    drawPine(ctx, 50, 112, 1.2, { seed: 42, young: true, height: 0.7 });
+})();
+
+// Variante D — velho/torto
+(function() {
+    var c = document.getElementById('vD');
+    var ctx = c.getContext('2d');
+    drawGrassBG(ctx, 100, 130);
+    drawPine(ctx, 48, 106, 1.15, { seed: 77, old: true, height: 1.05, lean: 0.4 });
+})();
+
+// ============ CENA COMPARATIVA ============
+(function() {
+    var c = document.getElementById('scene');
+    var ctx = c.getContext('2d');
+    drawGrassBG(ctx, 820, 280);
+
+    var rng = makeRng(99);
+    // Tufos de grama
+    for (var i = 0; i < 50; i++) {
+        var gx = rng() * 820, gy = 200 + rng() * 60;
+        ctx.beginPath();
+        ctx.ellipse(gx, gy, 2 + rng()*3, 1.5 + rng()*1.5, rng()*0.5, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(40,' + Math.floor(85+rng()*35) + ',35,0.2)';
+        ctx.fill();
+    }
+
+    // Pedrinhas
+    for (var i = 0; i < 10; i++) {
+        var px = rng() * 820, py = 210 + rng() * 40;
+        ctx.beginPath();
+        ctx.ellipse(px, py, 1 + rng()*2, 0.8 + rng(), rng(), 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(90,85,75,' + (0.15+rng()*0.15) + ')';
+        ctx.fill();
+    }
+
+    // Elementos na cena (de trás pra frente por Y)
+    var elements = [
+        // Árvores genéricas (decorativas) — copa ARREDONDADA
+        { type: 'generic', x: 30,  y: 215, seed: 1 },
+        { type: 'generic', x: 90,  y: 210, seed: 5 },
+        { type: 'generic', x: 190, y: 218, seed: 12 },
+        { type: 'generic', x: 275, y: 208, seed: 18 },
+        { type: 'generic', x: 370, y: 220, seed: 30 },
+        { type: 'generic', x: 470, y: 212, seed: 40 },
+        { type: 'generic', x: 560, y: 218, seed: 50 },
+        { type: 'generic', x: 660, y: 210, seed: 60 },
+        { type: 'generic', x: 755, y: 222, seed: 70 },
+
+        // Pinheiros (coletáveis T1) — copa CÔNICA TRIANGULAR
+        { type: 'pine', x: 145, y: 212, seed: 100, opts: {} },
+        { type: 'pine', x: 340, y: 215, seed: 110, opts: { height: 0.9 } },
+        { type: 'pine', x: 520, y: 210, seed: 120, opts: { height: 1.05 } },
+        { type: 'pine', x: 720, y: 216, seed: 130, opts: { young: true, height: 0.75 } },
+    ];
+
+    // Arbustos decorativos
+    var bushes = [
+        { x: 60, y: 232 }, { x: 230, y: 235 }, { x: 420, y: 230 },
+        { x: 610, y: 234 }, { x: 790, y: 231 }
+    ];
+    bushes.forEach(function(b) {
+        ctx.beginPath();
+        ctx.ellipse(b.x, b.y - 3, 7, 5, 0, 0, Math.PI*2);
+        ctx.fillStyle = '#2a5a2a';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(b.x - 2, b.y - 5, 5, 3.5, 0, 0, Math.PI*2);
+        ctx.fillStyle = '#3a7a3a';
+        ctx.fill();
+    });
+
+    // Ordenar por Y e desenhar
+    elements.sort(function(a,b) { return a.y - b.y; });
+    elements.forEach(function(el) {
+        if (el.type === 'pine') {
+            drawPine(ctx, el.x, el.y, 1, Object.assign({ seed: el.seed }, el.opts || {}));
+        } else {
+            drawGenericTree(ctx, el.x, el.y, 1, el.seed);
+        }
+    });
+
+    // Labels
+    elements.forEach(function(el) {
+        if (el.type === 'pine') {
+            ctx.fillStyle = 'rgba(255,200,50,0.85)';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('PINHEIRO', el.x, el.y + 14);
+            ctx.fillText('(coletável)', el.x, el.y + 22);
+        }
+    });
+
+    // Legenda
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(0, 0, 820, 28);
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'left';
+
+    // Ícones de legenda
+    ctx.fillStyle = '#2e6e30';
+    ctx.beginPath(); ctx.arc(12, 14, 6, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#aaa';
+    ctx.fillText('= Genérica / Decorativa (copa redonda, ~80%)', 24, 18);
+
+    ctx.fillStyle = '#1a5518';
+    ctx.beginPath();
+    ctx.moveTo(370, 8); ctx.lineTo(364, 20); ctx.lineTo(376, 20); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#5aff5a';
+    ctx.fillText('= Pinheiro / Coletável T1 (copa cônica, dropa Tronco de Pinho)', 382, 18);
+})();
+</script>
+</body>
+</html>

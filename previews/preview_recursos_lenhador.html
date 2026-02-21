@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Preview — Recursos Lenhador (Detalhado)</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', sans-serif; padding: 30px; }
+    h1 { text-align: center; margin-bottom: 10px; color: #8bddaa; }
+    .subtitle { text-align: center; color: #888; margin-bottom: 30px; font-size: 14px; }
+    .tier-section { margin-bottom: 40px; }
+    .tier-title { font-size: 18px; color: #c8a86e; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 5px; }
+    .row { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; }
+    .card {
+        background: #22223a; border-radius: 12px; padding: 20px; text-align: center;
+        border: 1px solid #333; min-width: 260px;
+    }
+    .card h3 { margin-bottom: 5px; color: #ddd; }
+    .card .desc { color: #888; font-size: 12px; margin-bottom: 12px; }
+    .canvas-row { display: flex; gap: 20px; justify-content: center; align-items: flex-end; margin-top: 10px; }
+    .canvas-wrap { text-align: center; }
+    .canvas-wrap canvas { border: 1px solid #333; border-radius: 4px; background: #2d5a1e; image-rendering: auto; }
+    .canvas-wrap .size-label { color: #666; font-size: 10px; margin-top: 3px; }
+    .bg-toggle { text-align: center; margin-bottom: 20px; }
+    .bg-toggle button {
+        background: #333; color: #ccc; border: 1px solid #555; padding: 6px 14px;
+        border-radius: 6px; cursor: pointer; margin: 0 5px; font-size: 13px;
+    }
+    .bg-toggle button.active { background: #4a8; color: #fff; border-color: #4a8; }
+</style>
+</head>
+<body>
+
+<h1>Recursos do Lenhador — Preview Visual (v2 Detalhado)</h1>
+<p class="subtitle">T1: Pinheiro / Toco de Pinho &nbsp;|&nbsp; T2: Carvalho / Toco de Carvalho</p>
+
+<div class="bg-toggle">
+    Fundo:
+    <button class="active" onclick="setBg('#2d5a1e', this)">Grama</button>
+    <button onclick="setBg('#3a6b2a', this)">Grama Clara</button>
+    <button onclick="setBg('#5a4a30', this)">Terra</button>
+    <button onclick="setBg('#222', this)">Escuro</button>
+</div>
+
+<div class="tier-section">
+    <div class="tier-title">Tier 1 — Pinheiro</div>
+    <div class="row">
+        <div class="card">
+            <h3>Pinheiro (Cheio)</h3>
+            <div class="desc">Recurso disponível para coleta</div>
+            <div class="canvas-row">
+                <div class="canvas-wrap">
+                    <canvas id="pine_full_sm" width="64" height="80"></canvas>
+                    <div class="size-label">64px (jogo)</div>
+                </div>
+                <div class="canvas-wrap">
+                    <canvas id="pine_full_md" width="128" height="160"></canvas>
+                    <div class="size-label">2x</div>
+                </div>
+                <div class="canvas-wrap">
+                    <canvas id="pine_full_lg" width="256" height="320"></canvas>
+                    <div class="size-label">4x</div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <h3>Toco de Pinho (Depletado)</h3>
+            <div class="desc">Após o jogador cortar</div>
+            <div class="canvas-row">
+                <div class="canvas-wrap">
+                    <canvas id="pine_stump_sm" width="64" height="80"></canvas>
+                    <div class="size-label">64px</div>
+                </div>
+                <div class="canvas-wrap">
+                    <canvas id="pine_stump_md" width="128" height="160"></canvas>
+                    <div class="size-label">2x</div>
+                </div>
+                <div class="canvas-wrap">
+                    <canvas id="pine_stump_lg" width="256" height="320"></canvas>
+                    <div class="size-label">4x</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="tier-section">
+    <div class="tier-title">Tier 2 — Carvalho</div>
+    <div class="row">
+        <div class="card">
+            <h3>Carvalho (Cheio)</h3>
+            <div class="desc">Recurso disponível para coleta</div>
+            <div class="canvas-row">
+                <div class="canvas-wrap">
+                    <canvas id="oak_full_sm" width="64" height="80"></canvas>
+                    <div class="size-label">64px (jogo)</div>
+                </div>
+                <div class="canvas-wrap">
+                    <canvas id="oak_full_md" width="128" height="160"></canvas>
+                    <div class="size-label">2x</div>
+                </div>
+                <div class="canvas-wrap">
+                    <canvas id="oak_full_lg" width="256" height="320"></canvas>
+                    <div class="size-label">4x</div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <h3>Toco de Carvalho (Depletado)</h3>
+            <div class="desc">Após o jogador cortar</div>
+            <div class="canvas-row">
+                <div class="canvas-wrap">
+                    <canvas id="oak_stump_sm" width="64" height="80"></canvas>
+                    <div class="size-label">64px</div>
+                </div>
+                <div class="canvas-wrap">
+                    <canvas id="oak_stump_md" width="128" height="160"></canvas>
+                    <div class="size-label">2x</div>
+                </div>
+                <div class="canvas-wrap">
+                    <canvas id="oak_stump_lg" width="256" height="320"></canvas>
+                    <div class="size-label">4x</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+//  HELPERS
+// ============================================================
+function ellipse(ctx, x, y, rx, ry, color, alpha) {
+    ctx.beginPath();
+    ctx.ellipse(x, y, Math.abs(rx), Math.abs(ry), 0, 0, Math.PI*2);
+    if (alpha !== undefined) { ctx.globalAlpha = alpha; }
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+}
+
+function poly(ctx, pts, color, alpha) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0], pts[1]);
+    for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i+1]);
+    ctx.closePath();
+    if (alpha !== undefined) ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+}
+
+// Cacho de folhas orgânico (nuvem irregular)
+function leafCluster(ctx, x, y, r, color, alpha) {
+    ctx.globalAlpha = alpha || 1;
+    ctx.fillStyle = color;
+    // Nuvem com 5-7 sub-circulos sobrepostos
+    const n = 5 + Math.floor(r * 0.3);
+    for (let i = 0; i < n; i++) {
+        const ang = (i / n) * Math.PI * 2 + 0.3;
+        const dist = r * 0.35;
+        const sr = r * (0.5 + Math.sin(i * 2.7) * 0.2);
+        ctx.beginPath();
+        ctx.arc(x + Math.cos(ang) * dist, y + Math.sin(ang) * dist, sr, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    // Centro
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+}
+
+// Textura de casca (linhas horizontais curvas)
+function barkTexture(ctx, x, y, w, h, color, count) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.6;
+    for (let i = 0; i < count; i++) {
+        const yy = y + (h / (count + 1)) * (i + 1);
+        const wave = Math.sin(i * 1.8) * 1.2;
+        ctx.beginPath();
+        ctx.moveTo(x - w/2, yy);
+        ctx.quadraticCurveTo(x + wave, yy - 0.5, x + w/2, yy + wave * 0.3);
+        ctx.stroke();
+    }
+}
+
+// Tufos de grama no chão
+function grassTuft(ctx, x, y, s, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 0.8 * s;
+    ctx.lineCap = 'round';
+    for (let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x + i * 1.5 * s, y);
+        ctx.quadraticCurveTo(x + i * 2.5 * s, y - 4 * s, x + i * 3 * s, y - 5 * s);
+        ctx.stroke();
+    }
+}
+
+// Pinha (pinecone)
+function pinecone(ctx, x, y, s) {
+    ctx.beginPath();
+    ctx.ellipse(x, y, 1.5*s, 2.5*s, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#7a5030';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(x - 0.3*s, y - 0.5*s, 1*s, 1.8*s, 0, 0, Math.PI*2);
+    ctx.fillStyle = '#8a6040';
+    ctx.globalAlpha = 0.5;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // Hastozinho
+    ctx.beginPath();
+    ctx.moveTo(x, y - 2.5*s);
+    ctx.lineTo(x + 0.3*s, y - 3.5*s);
+    ctx.strokeStyle = '#5a3a1a';
+    ctx.lineWidth = 0.5*s;
+    ctx.stroke();
+}
+
+// Cogumelo detalhado
+function mushroom(ctx, x, y, s, capColor) {
+    // Haste com curvinha
+    ctx.beginPath();
+    ctx.moveTo(x - 0.6*s, y);
+    ctx.quadraticCurveTo(x - 0.3*s, y - 2*s, x + 0.2*s, y - 3*s);
+    ctx.lineTo(x + 0.8*s, y - 3*s);
+    ctx.quadraticCurveTo(x + 0.5*s, y - 2*s, x + 0.6*s, y);
+    ctx.closePath();
+    ctx.fillStyle = '#e8e0cc';
+    ctx.fill();
+    // Chapéu
+    ctx.beginPath();
+    ctx.ellipse(x + 0.3*s, y - 3.2*s, 2.2*s, 1.4*s, -0.1, 0, Math.PI*2);
+    ctx.fillStyle = capColor;
+    ctx.fill();
+    // Brilho no chapéu
+    ctx.beginPath();
+    ctx.ellipse(x - 0.2*s, y - 3.8*s, 0.8*s, 0.5*s, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fill();
+}
+
+// ============================================================
+//  PINHEIRO (T1) — CHEIO
+// ============================================================
+function drawPineFull(ctx, cx, cy, s) {
+    // --- Sombra grande no chão ---
+    ellipse(ctx, cx + 2*s, cy + 3*s, 14*s, 6*s, '#000000', 0.22);
+
+    // --- Tufos de grama na base ---
+    grassTuft(ctx, cx - 10*s, cy + 1*s, s, '#2a7a28');
+    grassTuft(ctx, cx + 9*s, cy + 2*s, s, '#358a30');
+    grassTuft(ctx, cx - 3*s, cy + 3*s, s*0.7, '#2e8030');
+
+    // --- Raízes orgânicas saindo do tronco ---
+    ctx.beginPath();
+    ctx.moveTo(cx - 4*s, cy - 1*s);
+    ctx.bezierCurveTo(cx - 7*s, cy + 1*s, cx - 10*s, cy + 2*s, cx - 12*s, cy + 3*s);
+    ctx.lineTo(cx - 9*s, cy + 4*s);
+    ctx.bezierCurveTo(cx - 7*s, cy + 2*s, cx - 5*s, cy + 1*s, cx - 3*s, cy);
+    ctx.closePath();
+    ctx.fillStyle = '#3d2510';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(cx + 4*s, cy - 1*s);
+    ctx.bezierCurveTo(cx + 6*s, cy + 1*s, cx + 9*s, cy + 1*s, cx + 10*s, cy + 3*s);
+    ctx.lineTo(cx + 7*s, cy + 3*s);
+    ctx.bezierCurveTo(cx + 6*s, cy + 1*s, cx + 5*s, cy, cx + 3*s, cy);
+    ctx.closePath();
+    ctx.fillStyle = '#3d2510';
+    ctx.fill();
+
+    // Raiz menor frontal
+    ctx.beginPath();
+    ctx.moveTo(cx - 1*s, cy + 1*s);
+    ctx.bezierCurveTo(cx - 2*s, cy + 2*s, cx - 4*s, cy + 4*s, cx - 3*s, cy + 5*s);
+    ctx.lineTo(cx - 1*s, cy + 4*s);
+    ctx.bezierCurveTo(cx - 1*s, cy + 3*s, cx, cy + 2*s, cx, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#352010';
+    ctx.fill();
+
+    // --- Tronco com forma orgânica (leve curvatura, afinando) ---
+    ctx.beginPath();
+    ctx.moveTo(cx - 4*s, cy);
+    ctx.bezierCurveTo(cx - 4.5*s, cy - 10*s, cx - 3*s, cy - 22*s, cx - 2*s, cy - 34*s);
+    ctx.lineTo(cx + 2*s, cy - 34*s);
+    ctx.bezierCurveTo(cx + 3*s, cy - 22*s, cx + 4.5*s, cy - 10*s, cx + 4*s, cy);
+    ctx.closePath();
+    ctx.fillStyle = '#52301a';
+    ctx.fill();
+
+    // Lado iluminado do tronco
+    ctx.beginPath();
+    ctx.moveTo(cx - 4*s, cy);
+    ctx.bezierCurveTo(cx - 4.5*s, cy - 10*s, cx - 3*s, cy - 22*s, cx - 2*s, cy - 34*s);
+    ctx.lineTo(cx, cy - 34*s);
+    ctx.bezierCurveTo(cx - 0.5*s, cy - 22*s, cx - 1*s, cy - 10*s, cx, cy);
+    ctx.closePath();
+    ctx.fillStyle = '#6b4228';
+    ctx.globalAlpha = 0.5;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Textura de casca
+    barkTexture(ctx, cx, cy - 5*s, 7*s, 24*s, 'rgba(30,15,5,0.25)', 8);
+
+    // Nó na madeira
+    ellipse(ctx, cx + 1*s, cy - 12*s, 1.5*s, 2*s, '#3a1e0a', 0.5);
+    ellipse(ctx, cx + 1*s, cy - 12*s, 0.8*s, 1.2*s, '#2a1408', 0.3);
+
+    // --- Galhos visíveis saindo do tronco (antes das folhas) ---
+    // Galho esquerdo baixo
+    ctx.beginPath();
+    ctx.moveTo(cx - 2*s, cy - 16*s);
+    ctx.bezierCurveTo(cx - 8*s, cy - 18*s, cx - 13*s, cy - 17*s, cx - 16*s, cy - 19*s);
+    ctx.lineTo(cx - 15*s, cy - 21*s);
+    ctx.bezierCurveTo(cx - 12*s, cy - 19*s, cx - 7*s, cy - 19*s, cx - 1*s, cy - 18*s);
+    ctx.closePath();
+    ctx.fillStyle = '#4a2814';
+    ctx.fill();
+
+    // Galho direito baixo
+    ctx.beginPath();
+    ctx.moveTo(cx + 2*s, cy - 18*s);
+    ctx.bezierCurveTo(cx + 7*s, cy - 19*s, cx + 12*s, cy - 17*s, cx + 14*s, cy - 19*s);
+    ctx.lineTo(cx + 13*s, cy - 21*s);
+    ctx.bezierCurveTo(cx + 10*s, cy - 19*s, cx + 6*s, cy - 20*s, cx + 1*s, cy - 20*s);
+    ctx.closePath();
+    ctx.fillStyle = '#4a2814';
+    ctx.fill();
+
+    // --- COPA: Camadas cônicas com bordas orgânicas ---
+    // Camada inferior (mais larga)
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 20*s);
+    ctx.bezierCurveTo(cx - 5*s, cy - 19*s, cx - 15*s, cy - 14*s, cx - 18*s, cy - 12*s);
+    ctx.bezierCurveTo(cx - 16*s, cy - 13*s, cx - 14*s, cy - 11*s, cx - 12*s, cy - 12*s);
+    ctx.bezierCurveTo(cx - 10*s, cy - 10*s, cx - 5*s, cy - 9*s, cx, cy - 11*s);
+    ctx.bezierCurveTo(cx + 5*s, cy - 9*s, cx + 10*s, cy - 10*s, cx + 13*s, cy - 12*s);
+    ctx.bezierCurveTo(cx + 15*s, cy - 11*s, cx + 17*s, cy - 13*s, cx + 18*s, cy - 12*s);
+    ctx.bezierCurveTo(cx + 15*s, cy - 14*s, cx + 5*s, cy - 19*s, cx, cy - 20*s);
+    ctx.closePath();
+    ctx.fillStyle = '#14501a';
+    ctx.fill();
+
+    // Camada média
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 30*s);
+    ctx.bezierCurveTo(cx - 4*s, cy - 28*s, cx - 12*s, cy - 22*s, cx - 15*s, cy - 19*s);
+    ctx.bezierCurveTo(cx - 13*s, cy - 20*s, cx - 10*s, cy - 18*s, cx - 8*s, cy - 19*s);
+    ctx.bezierCurveTo(cx - 5*s, cy - 17*s, cx - 2*s, cy - 17*s, cx, cy - 18*s);
+    ctx.bezierCurveTo(cx + 3*s, cy - 17*s, cx + 6*s, cy - 17*s, cx + 9*s, cy - 19*s);
+    ctx.bezierCurveTo(cx + 11*s, cy - 18*s, cx + 13*s, cy - 20*s, cx + 15*s, cy - 19*s);
+    ctx.bezierCurveTo(cx + 12*s, cy - 22*s, cx + 4*s, cy - 28*s, cx, cy - 30*s);
+    ctx.closePath();
+    ctx.fillStyle = '#1c6422';
+    ctx.fill();
+
+    // Camada superior
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 40*s);
+    ctx.bezierCurveTo(cx - 3*s, cy - 38*s, cx - 9*s, cy - 32*s, cx - 11*s, cy - 28*s);
+    ctx.bezierCurveTo(cx - 9*s, cy - 29*s, cx - 7*s, cy - 27*s, cx - 5*s, cy - 28*s);
+    ctx.bezierCurveTo(cx - 3*s, cy - 26*s, cx, cy - 27*s, cx + 2*s, cy - 27*s);
+    ctx.bezierCurveTo(cx + 5*s, cy - 26*s, cx + 8*s, cy - 28*s, cx + 11*s, cy - 28*s);
+    ctx.bezierCurveTo(cx + 9*s, cy - 32*s, cx + 3*s, cy - 38*s, cx, cy - 40*s);
+    ctx.closePath();
+    ctx.fillStyle = '#247a2c';
+    ctx.fill();
+
+    // Ponta do topo
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 48*s);
+    ctx.bezierCurveTo(cx - 2*s, cy - 44*s, cx - 5*s, cy - 38*s, cx - 6*s, cy - 36*s);
+    ctx.bezierCurveTo(cx - 4*s, cy - 37*s, cx - 2*s, cy - 35*s, cx, cy - 36*s);
+    ctx.bezierCurveTo(cx + 2*s, cy - 35*s, cx + 4*s, cy - 37*s, cx + 6*s, cy - 36*s);
+    ctx.bezierCurveTo(cx + 5*s, cy - 38*s, cx + 2*s, cy - 44*s, cx, cy - 48*s);
+    ctx.closePath();
+    ctx.fillStyle = '#2e9234';
+    ctx.fill();
+
+    // --- Volumes de folhagem (cachos sobrepostos para profundidade) ---
+    leafCluster(ctx, cx - 10*s, cy - 14*s, 5*s, '#1a5820', 0.7);
+    leafCluster(ctx, cx + 11*s, cy - 14*s, 4.5*s, '#18521e', 0.6);
+    leafCluster(ctx, cx - 7*s, cy - 22*s, 4*s, '#1e6624', 0.6);
+    leafCluster(ctx, cx + 8*s, cy - 23*s, 4*s, '#206828', 0.55);
+    leafCluster(ctx, cx - 4*s, cy - 32*s, 3.5*s, '#268830', 0.5);
+    leafCluster(ctx, cx + 5*s, cy - 31*s, 3*s, '#2a8a34', 0.5);
+
+    // --- Highlights solares (topo claro) ---
+    leafCluster(ctx, cx - 2*s, cy - 42*s, 3*s, '#48c050', 0.2);
+    leafCluster(ctx, cx - 8*s, cy - 25*s, 2.5*s, '#40b848', 0.15);
+    ellipse(ctx, cx + 1*s, cy - 46*s, 2*s, 1.5*s, '#60dd60', 0.15);
+
+    // --- Sombras internas (lado direito = escuro) ---
+    ctx.beginPath();
+    ctx.moveTo(cx + 5*s, cy - 17*s);
+    ctx.bezierCurveTo(cx + 12*s, cy - 14*s, cx + 17*s, cy - 12*s, cx + 14*s, cy - 16*s);
+    ctx.bezierCurveTo(cx + 10*s, cy - 18*s, cx + 7*s, cy - 18*s, cx + 5*s, cy - 17*s);
+    ctx.closePath();
+    ctx.fillStyle = '#000';
+    ctx.globalAlpha = 0.12;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // --- Pinhas penduradas ---
+    pinecone(ctx, cx - 9*s, cy - 13*s, s);
+    pinecone(ctx, cx + 6*s, cy - 11*s, s * 0.8);
+
+    // --- Folhas caídas no chão ---
+    ellipse(ctx, cx - 8*s, cy + 2*s, 1.2*s, 0.6*s, '#5a7a30', 0.5);
+    ellipse(ctx, cx + 5*s, cy + 3*s, 1*s, 0.5*s, '#4a6a28', 0.4);
+    ellipse(ctx, cx + 10*s, cy + 1*s, 0.8*s, 0.4*s, '#3a5a20', 0.45);
+}
+
+// ============================================================
+//  PINHEIRO (T1) — TOCO (DEPLETADO)
+// ============================================================
+function drawPineStump(ctx, cx, cy, s) {
+    // --- Sombra ---
+    ellipse(ctx, cx + 1*s, cy + 2*s, 12*s, 5*s, '#000000', 0.2);
+
+    // --- Tufos de grama ao redor ---
+    grassTuft(ctx, cx - 11*s, cy + 1*s, s, '#2a7a28');
+    grassTuft(ctx, cx + 10*s, cy + 2*s, s, '#358a30');
+    grassTuft(ctx, cx - 5*s, cy + 4*s, s*0.7, '#2e8030');
+    grassTuft(ctx, cx + 3*s, cy + 4*s, s*0.6, '#2a7228');
+
+    // --- Serragem e lascas espalhadas ---
+    ellipse(ctx, cx - 7*s, cy + 1*s, 2*s, 0.8*s, '#b09060', 0.4);
+    ellipse(ctx, cx + 8*s, cy, 1.5*s, 0.6*s, '#a08050', 0.35);
+    ellipse(ctx, cx + 2*s, cy + 3*s, 1.8*s, 0.7*s, '#c0a070', 0.3);
+    ellipse(ctx, cx - 3*s, cy + 2*s, 1*s, 0.5*s, '#9a7848', 0.35);
+    // Lascas de madeira (retângulos angulados)
+    ctx.save();
+    ctx.translate(cx - 9*s, cy - 1*s);
+    ctx.rotate(-0.4);
+    ctx.fillStyle = '#a08050';
+    ctx.globalAlpha = 0.5;
+    ctx.fillRect(-1.5*s, -0.4*s, 3*s, 0.8*s);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.translate(cx + 7*s, cy + 1*s);
+    ctx.rotate(0.6);
+    ctx.fillStyle = '#90704a';
+    ctx.globalAlpha = 0.45;
+    ctx.fillRect(-1*s, -0.3*s, 2*s, 0.6*s);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+
+    // --- Raiz exposta esquerda ---
+    ctx.beginPath();
+    ctx.moveTo(cx - 6*s, cy);
+    ctx.bezierCurveTo(cx - 8*s, cy + 1*s, cx - 11*s, cy + 2*s, cx - 13*s, cy + 3*s);
+    ctx.lineTo(cx - 10*s, cy + 4*s);
+    ctx.bezierCurveTo(cx - 8*s, cy + 2*s, cx - 6*s, cy + 1*s, cx - 5*s, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3d2510';
+    ctx.fill();
+
+    // Raiz direita
+    ctx.beginPath();
+    ctx.moveTo(cx + 6*s, cy);
+    ctx.bezierCurveTo(cx + 8*s, cy + 1*s, cx + 10*s, cy + 2*s, cx + 11*s, cy + 3*s);
+    ctx.lineTo(cx + 9*s, cy + 3*s);
+    ctx.bezierCurveTo(cx + 8*s, cy + 1*s, cx + 6*s, cy + 1*s, cx + 5*s, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3d2510';
+    ctx.fill();
+
+    // --- Corpo do toco (cilindro orgânico) ---
+    ctx.beginPath();
+    ctx.moveTo(cx - 7*s, cy + 1*s);
+    ctx.bezierCurveTo(cx - 7.5*s, cy - 3*s, cx - 6.5*s, cy - 8*s, cx - 6*s, cy - 11*s);
+    ctx.lineTo(cx + 6*s, cy - 11*s);
+    ctx.bezierCurveTo(cx + 6.5*s, cy - 8*s, cx + 7.5*s, cy - 3*s, cx + 7*s, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#52301a';
+    ctx.fill();
+
+    // Lado iluminado
+    ctx.beginPath();
+    ctx.moveTo(cx - 7*s, cy + 1*s);
+    ctx.bezierCurveTo(cx - 7.5*s, cy - 3*s, cx - 6.5*s, cy - 8*s, cx - 6*s, cy - 11*s);
+    ctx.lineTo(cx, cy - 11*s);
+    ctx.bezierCurveTo(cx - 0.5*s, cy - 8*s, cx - 1*s, cy - 3*s, cx, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#6b4228';
+    ctx.globalAlpha = 0.45;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Textura de casca no toco
+    barkTexture(ctx, cx, cy - 3*s, 12*s, 8*s, 'rgba(30,15,5,0.25)', 4);
+
+    // --- Topo do toco (corte) — perspectiva elíptica ---
+    ellipse(ctx, cx, cy - 11*s, 7*s, 3.5*s, '#d4aa6a', 1);
+
+    // Anéis de crescimento detalhados
+    ctx.strokeStyle = '#b08848';
+    ctx.lineWidth = 0.6*s;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 11*s, 5.5*s, 2.7*s, 0, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.strokeStyle = '#a07838';
+    ctx.lineWidth = 0.5*s;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 11*s, 4*s, 2*s, 0, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.strokeStyle = '#906830';
+    ctx.lineWidth = 0.4*s;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 11*s, 2.5*s, 1.2*s, 0, 0, Math.PI*2);
+    ctx.stroke();
+
+    // Centro escuro (miolo)
+    ellipse(ctx, cx, cy - 11*s, 1.2*s, 0.6*s, '#6a4418', 1);
+
+    // Rachaduras no corte
+    ctx.beginPath();
+    ctx.moveTo(cx - 1*s, cy - 11.5*s);
+    ctx.lineTo(cx - 4*s, cy - 11*s);
+    ctx.strokeStyle = '#8a6030';
+    ctx.lineWidth = 0.4*s;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 0.5*s, cy - 10.5*s);
+    ctx.lineTo(cx + 3*s, cy - 11.2*s);
+    ctx.stroke();
+
+    // --- Musgo na lateral do toco ---
+    ellipse(ctx, cx - 5*s, cy - 5*s, 2.5*s, 1.8*s, '#3a7a30', 0.4);
+    ellipse(ctx, cx - 4*s, cy - 6*s, 1.5*s, 1*s, '#4a9a40', 0.3);
+
+    // --- Cogumelos pequenos na base ---
+    mushroom(ctx, cx + 5*s, cy - 1*s, s, '#c46838');
+    mushroom(ctx, cx + 7.5*s, cy - 0.5*s, s*0.7, '#b85830');
+
+    // --- Broto verde nascendo do toco ---
+    ctx.beginPath();
+    ctx.moveTo(cx + 3*s, cy - 12*s);
+    ctx.bezierCurveTo(cx + 4*s, cy - 18*s, cx + 5*s, cy - 19*s, cx + 7*s, cy - 18*s);
+    ctx.bezierCurveTo(cx + 5*s, cy - 17*s, cx + 5*s, cy - 15*s, cx + 3*s, cy - 12*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3ca030';
+    ctx.fill();
+
+    // Segunda folhinha
+    ctx.beginPath();
+    ctx.moveTo(cx + 3.5*s, cy - 13*s);
+    ctx.bezierCurveTo(cx + 2*s, cy - 17*s, cx + 1*s, cy - 18*s, cx - 0.5*s, cy - 16*s);
+    ctx.bezierCurveTo(cx + 1*s, cy - 15.5*s, cx + 2*s, cy - 14*s, cx + 3.5*s, cy - 13*s);
+    ctx.closePath();
+    ctx.fillStyle = '#48b838';
+    ctx.fill();
+
+    // Highlight na folha
+    ctx.beginPath();
+    ctx.moveTo(cx + 4*s, cy - 14*s);
+    ctx.bezierCurveTo(cx + 4.5*s, cy - 16*s, cx + 5*s, cy - 17*s, cx + 6*s, cy - 17*s);
+    ctx.strokeStyle = '#60dd50';
+    ctx.lineWidth = 0.4*s;
+    ctx.globalAlpha = 0.5;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // --- Agulhas caídas no chão ---
+    for (let i = 0; i < 6; i++) {
+        const ax = cx + (Math.sin(i*2.1) * 10 - 2) * s;
+        const ay = cy + (Math.cos(i*1.7) * 2 + 1) * s;
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(ax + 2*s * Math.cos(i), ay + 0.5*s * Math.sin(i));
+        ctx.strokeStyle = '#5a7a30';
+        ctx.lineWidth = 0.3*s;
+        ctx.globalAlpha = 0.4;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+    }
+}
+
+// ============================================================
+//  CARVALHO (T2) — CHEIO
+// ============================================================
+function drawOakFull(ctx, cx, cy, s) {
+    // --- Sombra grande ---
+    ellipse(ctx, cx + 3*s, cy + 4*s, 20*s, 8*s, '#000000', 0.22);
+
+    // --- Tufos de grama ---
+    grassTuft(ctx, cx - 14*s, cy + 2*s, s, '#2a7a28');
+    grassTuft(ctx, cx + 13*s, cy + 3*s, s, '#348a2e');
+    grassTuft(ctx, cx - 6*s, cy + 4*s, s*0.8, '#2c7a2a');
+    grassTuft(ctx, cx + 4*s, cy + 5*s, s*0.6, '#328430');
+
+    // --- Pequenas flores no chão ---
+    ellipse(ctx, cx - 12*s, cy + 3*s, 1*s, 1*s, '#e888aa', 0.4);
+    ellipse(ctx, cx - 12*s, cy + 3*s, 0.4*s, 0.4*s, '#ffee66', 0.5);
+    ellipse(ctx, cx + 11*s, cy + 4*s, 0.8*s, 0.8*s, '#aa88dd', 0.35);
+
+    // --- Raízes grossas e sinuosas ---
+    ctx.beginPath();
+    ctx.moveTo(cx - 6*s, cy);
+    ctx.bezierCurveTo(cx - 10*s, cy + 2*s, cx - 15*s, cy + 3*s, cx - 18*s, cy + 4*s);
+    ctx.lineTo(cx - 15*s, cy + 5*s);
+    ctx.bezierCurveTo(cx - 12*s, cy + 4*s, cx - 8*s, cy + 2*s, cx - 5*s, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3a2010';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(cx + 6*s, cy);
+    ctx.bezierCurveTo(cx + 9*s, cy + 1*s, cx + 13*s, cy + 2*s, cx + 16*s, cy + 4*s);
+    ctx.lineTo(cx + 13*s, cy + 5*s);
+    ctx.bezierCurveTo(cx + 10*s, cy + 3*s, cx + 7*s, cy + 1*s, cx + 5*s, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3a2010';
+    ctx.fill();
+
+    // Raiz frontal curvada
+    ctx.beginPath();
+    ctx.moveTo(cx - 2*s, cy + 1*s);
+    ctx.bezierCurveTo(cx - 3*s, cy + 3*s, cx - 6*s, cy + 5*s, cx - 8*s, cy + 5*s);
+    ctx.lineTo(cx - 6*s, cy + 6*s);
+    ctx.bezierCurveTo(cx - 4*s, cy + 5*s, cx - 1*s, cy + 3*s, cx, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#352010';
+    ctx.fill();
+
+    // --- Tronco grosso e retorcido (carvalho tem caráter!) ---
+    ctx.beginPath();
+    ctx.moveTo(cx - 6*s, cy);
+    ctx.bezierCurveTo(cx - 7*s, cy - 6*s, cx - 6*s, cy - 14*s, cx - 5*s, cy - 20*s);
+    ctx.bezierCurveTo(cx - 5*s, cy - 24*s, cx - 4*s, cy - 26*s, cx - 3*s, cy - 28*s);
+    ctx.lineTo(cx + 4*s, cy - 28*s);
+    ctx.bezierCurveTo(cx + 5*s, cy - 26*s, cx + 6*s, cy - 24*s, cx + 6*s, cy - 20*s);
+    ctx.bezierCurveTo(cx + 7*s, cy - 14*s, cx + 7*s, cy - 6*s, cx + 6*s, cy);
+    ctx.closePath();
+    ctx.fillStyle = '#3e2210';
+    ctx.fill();
+
+    // Lado iluminado
+    ctx.beginPath();
+    ctx.moveTo(cx - 6*s, cy);
+    ctx.bezierCurveTo(cx - 7*s, cy - 6*s, cx - 6*s, cy - 14*s, cx - 5*s, cy - 20*s);
+    ctx.bezierCurveTo(cx - 5*s, cy - 24*s, cx - 4*s, cy - 26*s, cx - 3*s, cy - 28*s);
+    ctx.lineTo(cx, cy - 28*s);
+    ctx.bezierCurveTo(cx - 1*s, cy - 24*s, cx - 2*s, cy - 14*s, cx - 1*s, cy);
+    ctx.closePath();
+    ctx.fillStyle = '#5a3820';
+    ctx.globalAlpha = 0.55;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Textura de casca rica
+    barkTexture(ctx, cx, cy - 5*s, 11*s, 20*s, 'rgba(25,12,5,0.3)', 10);
+
+    // Nó grande (caráter do carvalho)
+    ellipse(ctx, cx + 2*s, cy - 10*s, 2.5*s, 3*s, '#2a1508', 0.5);
+    ellipse(ctx, cx + 2*s, cy - 10*s, 1.5*s, 2*s, '#1a0c04', 0.4);
+    // Nó menor
+    ellipse(ctx, cx - 3*s, cy - 18*s, 1.2*s, 1.5*s, '#2a1508', 0.35);
+
+    // --- Galhos grandes saindo do tronco ---
+    // Galho esquerdo (grosso, curvado)
+    ctx.beginPath();
+    ctx.moveTo(cx - 4*s, cy - 22*s);
+    ctx.bezierCurveTo(cx - 10*s, cy - 26*s, cx - 16*s, cy - 30*s, cx - 19*s, cy - 33*s);
+    ctx.lineTo(cx - 17*s, cy - 35*s);
+    ctx.bezierCurveTo(cx - 14*s, cy - 32*s, cx - 8*s, cy - 28*s, cx - 2*s, cy - 24*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3e2210';
+    ctx.fill();
+
+    // Galho direito
+    ctx.beginPath();
+    ctx.moveTo(cx + 4*s, cy - 23*s);
+    ctx.bezierCurveTo(cx + 10*s, cy - 27*s, cx + 15*s, cy - 31*s, cx + 18*s, cy - 33*s);
+    ctx.lineTo(cx + 16*s, cy - 35*s);
+    ctx.bezierCurveTo(cx + 13*s, cy - 32*s, cx + 8*s, cy - 28*s, cx + 2*s, cy - 25*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3e2210';
+    ctx.fill();
+
+    // Galho central/topo
+    ctx.beginPath();
+    ctx.moveTo(cx - 1*s, cy - 28*s);
+    ctx.bezierCurveTo(cx - 2*s, cy - 34*s, cx - 1*s, cy - 38*s, cx, cy - 42*s);
+    ctx.lineTo(cx + 2*s, cy - 42*s);
+    ctx.bezierCurveTo(cx + 2*s, cy - 38*s, cx + 3*s, cy - 34*s, cx + 2*s, cy - 28*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3e2210';
+    ctx.fill();
+
+    // --- COPA: Massa densa de folhagem com cachos orgânicos ---
+    // Camada base (sombra profunda)
+    leafCluster(ctx, cx, cy - 32*s, 22*s, '#0c3010', 0.8);
+
+    // Camada principal esquerda
+    leafCluster(ctx, cx - 12*s, cy - 34*s, 12*s, '#14481a', 0.9);
+    // Camada principal direita
+    leafCluster(ctx, cx + 12*s, cy - 35*s, 11*s, '#164a1c', 0.85);
+    // Camada principal centro
+    leafCluster(ctx, cx + 1*s, cy - 38*s, 14*s, '#1a5820', 0.9);
+
+    // Volume superior esquerdo
+    leafCluster(ctx, cx - 8*s, cy - 40*s, 9*s, '#1e6424', 0.8);
+    // Volume superior direito
+    leafCluster(ctx, cx + 9*s, cy - 41*s, 8*s, '#206826', 0.75);
+    // Volume topo
+    leafCluster(ctx, cx, cy - 45*s, 10*s, '#247228', 0.85);
+
+    // Detalhes de folhagem mais claros
+    leafCluster(ctx, cx - 14*s, cy - 32*s, 5*s, '#1c5c22', 0.5);
+    leafCluster(ctx, cx + 15*s, cy - 33*s, 4*s, '#1a5a20', 0.45);
+    leafCluster(ctx, cx - 5*s, cy - 46*s, 6*s, '#2c8430', 0.6);
+    leafCluster(ctx, cx + 6*s, cy - 44*s, 5*s, '#2a7e2e', 0.55);
+
+    // --- Highlights solares (pontos claros no topo) ---
+    leafCluster(ctx, cx - 3*s, cy - 47*s, 5*s, '#40b848', 0.2);
+    leafCluster(ctx, cx + 4*s, cy - 45*s, 4*s, '#48c050', 0.18);
+    leafCluster(ctx, cx - 10*s, cy - 38*s, 3*s, '#38a840', 0.15);
+    ellipse(ctx, cx, cy - 50*s, 3*s, 2*s, '#50d850', 0.12);
+
+    // --- Sombras no lado direito (profundidade) ---
+    leafCluster(ctx, cx + 14*s, cy - 34*s, 6*s, '#000000', 0.1);
+    leafCluster(ctx, cx + 8*s, cy - 30*s, 5*s, '#000000', 0.08);
+
+    // --- Galhos aparecendo entre a folhagem ---
+    ctx.beginPath();
+    ctx.moveTo(cx - 15*s, cy - 30*s);
+    ctx.bezierCurveTo(cx - 17*s, cy - 31*s, cx - 19*s, cy - 30*s, cx - 20*s, cy - 29*s);
+    ctx.strokeStyle = '#3e2210';
+    ctx.lineWidth = 1.2*s;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(cx + 14*s, cy - 31*s);
+    ctx.bezierCurveTo(cx + 16*s, cy - 30*s, cx + 18*s, cy - 29*s, cx + 19*s, cy - 28*s);
+    ctx.strokeStyle = '#3e2210';
+    ctx.lineWidth = 1*s;
+    ctx.stroke();
+
+    // --- Folhas caídas e bolotas no chão ---
+    ellipse(ctx, cx - 9*s, cy + 2*s, 1.2*s, 0.7*s, '#5a7a20', 0.45);
+    ellipse(ctx, cx + 7*s, cy + 3*s, 1*s, 0.6*s, '#6a8a28', 0.4);
+    ellipse(ctx, cx - 2*s, cy + 4*s, 0.8*s, 0.5*s, '#4a6a18', 0.4);
+    // Bolota
+    ellipse(ctx, cx + 3*s, cy + 2*s, 0.8*s, 1*s, '#8a6a30', 0.5);
+    ellipse(ctx, cx + 3*s, cy + 1.2*s, 1*s, 0.5*s, '#6a5020', 0.5);
+}
+
+// ============================================================
+//  CARVALHO (T2) — TOCO (DEPLETADO)
+// ============================================================
+function drawOakStump(ctx, cx, cy, s) {
+    // --- Sombra ---
+    ellipse(ctx, cx + 2*s, cy + 3*s, 16*s, 7*s, '#000000', 0.22);
+
+    // --- Tufos de grama ---
+    grassTuft(ctx, cx - 14*s, cy + 2*s, s, '#2a7a28');
+    grassTuft(ctx, cx + 13*s, cy + 3*s, s, '#358a30');
+    grassTuft(ctx, cx + 3*s, cy + 5*s, s*0.7, '#2e8030');
+
+    // --- Flores pequenas ---
+    ellipse(ctx, cx - 11*s, cy + 3*s, 0.8*s, 0.8*s, '#ddaa88', 0.4);
+    ellipse(ctx, cx + 12*s, cy + 2*s, 0.7*s, 0.7*s, '#aa88cc', 0.35);
+
+    // --- Lascas e serragem generosas ---
+    ellipse(ctx, cx - 9*s, cy + 1*s, 2.5*s, 0.8*s, '#b09060', 0.4);
+    ellipse(ctx, cx + 10*s, cy, 2*s, 0.7*s, '#a08050', 0.35);
+    ellipse(ctx, cx + 4*s, cy + 3*s, 2.2*s, 0.8*s, '#c0a070', 0.3);
+    ellipse(ctx, cx - 5*s, cy + 3*s, 1.5*s, 0.6*s, '#9a7848', 0.35);
+
+    // Lascas maiores
+    ctx.save();
+    ctx.translate(cx - 11*s, cy - 1*s);
+    ctx.rotate(-0.5);
+    poly(ctx, [0, 0, 3*s, -0.5*s, 3.5*s, 0.5*s, 0.5*s, 0.8*s], '#a08050', 0.45);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+
+    ctx.save();
+    ctx.translate(cx + 9*s, cy + 1*s);
+    ctx.rotate(0.7);
+    poly(ctx, [0, 0, 2.5*s, -0.3*s, 2.8*s, 0.4*s, 0.3*s, 0.6*s], '#90704a', 0.4);
+    ctx.restore();
+    ctx.globalAlpha = 1;
+
+    // --- Raízes grossas expostas ---
+    ctx.beginPath();
+    ctx.moveTo(cx - 9*s, cy);
+    ctx.bezierCurveTo(cx - 13*s, cy + 2*s, cx - 17*s, cy + 3*s, cx - 19*s, cy + 4*s);
+    ctx.lineTo(cx - 16*s, cy + 5*s);
+    ctx.bezierCurveTo(cx - 13*s, cy + 4*s, cx - 10*s, cy + 2*s, cx - 8*s, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3a2010';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(cx + 9*s, cy);
+    ctx.bezierCurveTo(cx + 12*s, cy + 2*s, cx + 15*s, cy + 3*s, cx + 17*s, cy + 4*s);
+    ctx.lineTo(cx + 14*s, cy + 5*s);
+    ctx.bezierCurveTo(cx + 11*s, cy + 3*s, cx + 9*s, cy + 1*s, cx + 8*s, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3a2010';
+    ctx.fill();
+
+    // Raiz frontal
+    ctx.beginPath();
+    ctx.moveTo(cx - 3*s, cy + 1*s);
+    ctx.bezierCurveTo(cx - 5*s, cy + 3*s, cx - 8*s, cy + 5*s, cx - 9*s, cy + 6*s);
+    ctx.lineTo(cx - 7*s, cy + 6*s);
+    ctx.bezierCurveTo(cx - 5*s, cy + 5*s, cx - 3*s, cy + 3*s, cx - 1*s, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#352010';
+    ctx.fill();
+
+    // --- Corpo do toco (grande, orgânico) ---
+    ctx.beginPath();
+    ctx.moveTo(cx - 10*s, cy + 1*s);
+    ctx.bezierCurveTo(cx - 10.5*s, cy - 3*s, cx - 9.5*s, cy - 8*s, cx - 9*s, cy - 13*s);
+    ctx.bezierCurveTo(cx - 8.5*s, cy - 14.5*s, cx - 7*s, cy - 15*s, cx - 5*s, cy - 15*s);
+    ctx.lineTo(cx + 6*s, cy - 15*s);
+    ctx.bezierCurveTo(cx + 8*s, cy - 15*s, cx + 9.5*s, cy - 14.5*s, cx + 10*s, cy - 13*s);
+    ctx.bezierCurveTo(cx + 10.5*s, cy - 8*s, cx + 11*s, cy - 3*s, cx + 10*s, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#3e2210';
+    ctx.fill();
+
+    // Lado iluminado
+    ctx.beginPath();
+    ctx.moveTo(cx - 10*s, cy + 1*s);
+    ctx.bezierCurveTo(cx - 10.5*s, cy - 3*s, cx - 9.5*s, cy - 8*s, cx - 9*s, cy - 13*s);
+    ctx.bezierCurveTo(cx - 8.5*s, cy - 14.5*s, cx - 7*s, cy - 15*s, cx - 5*s, cy - 15*s);
+    ctx.lineTo(cx, cy - 15*s);
+    ctx.bezierCurveTo(cx - 1*s, cy - 8*s, cx - 2*s, cy - 3*s, cx - 1*s, cy + 1*s);
+    ctx.closePath();
+    ctx.fillStyle = '#5a3820';
+    ctx.globalAlpha = 0.5;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+
+    // Textura de casca rica
+    barkTexture(ctx, cx, cy - 4*s, 18*s, 10*s, 'rgba(25,12,5,0.3)', 6);
+
+    // Nós na casca
+    ellipse(ctx, cx + 5*s, cy - 6*s, 2*s, 2.5*s, '#2a1508', 0.45);
+    ellipse(ctx, cx + 5*s, cy - 6*s, 1*s, 1.5*s, '#1a0c04', 0.35);
+    ellipse(ctx, cx - 6*s, cy - 9*s, 1.5*s, 1.8*s, '#2a1508', 0.35);
+
+    // --- Topo do toco (superfície de corte detalhada) ---
+    // Borda da casca (anel externo irregular)
+    ellipse(ctx, cx, cy - 14*s, 10*s, 5*s, '#4a2a14', 1);
+    // Superfície de madeira
+    ellipse(ctx, cx, cy - 14.5*s, 8.5*s, 4.2*s, '#d4a868', 1);
+
+    // Anéis de crescimento (muitos — carvalho velho)
+    const ringColors = ['#c0944a', '#b08840', '#a07c38', '#907030', '#806428'];
+    const ringSizes = [7, 5.5, 4, 2.5, 1.2];
+    for (let i = 0; i < ringColors.length; i++) {
+        ctx.beginPath();
+        ctx.ellipse(cx + (i%2)*0.3*s, cy - 14.5*s, ringSizes[i]*s, ringSizes[i]*0.5*s, 0, 0, Math.PI*2);
+        ctx.strokeStyle = ringColors[i];
+        ctx.lineWidth = (0.7 - i*0.08)*s;
+        ctx.stroke();
+    }
+
+    // Centro (miolo escuro)
+    ellipse(ctx, cx, cy - 14.5*s, 0.8*s, 0.4*s, '#5a3a10', 1);
+
+    // Rachaduras no corte
+    ctx.strokeStyle = '#8a6830';
+    ctx.lineWidth = 0.4*s;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 14.5*s);
+    ctx.bezierCurveTo(cx - 2*s, cy - 14*s, cx - 5*s, cy - 14.5*s, cx - 7*s, cy - 14*s);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 0.5*s, cy - 14.5*s);
+    ctx.bezierCurveTo(cx + 3*s, cy - 15*s, cx + 6*s, cy - 14.5*s, cx + 7*s, cy - 15*s);
+    ctx.stroke();
+
+    // --- Musgo rico na lateral ---
+    leafCluster(ctx, cx - 7*s, cy - 6*s, 3*s, '#3a8a30', 0.35);
+    leafCluster(ctx, cx - 8*s, cy - 9*s, 2*s, '#48a040', 0.3);
+    ellipse(ctx, cx + 7*s, cy - 3*s, 2*s, 1.5*s, '#3a7a2a', 0.3);
+
+    // --- Cluster de cogumelos (carvalho morto = vida nova) ---
+    mushroom(ctx, cx + 7*s, cy - 1*s, s*1.1, '#cc7040');
+    mushroom(ctx, cx + 9*s, cy, s*0.8, '#b86038');
+    mushroom(ctx, cx + 5.5*s, cy, s*0.7, '#d88050');
+
+    // Cogumelos no topo
+    mushroom(ctx, cx - 4*s, cy - 16*s, s*0.8, '#c07048');
+    mushroom(ctx, cx - 2*s, cy - 16.5*s, s*0.6, '#b86040');
+
+    // --- Hera/trepadeira subindo ---
+    ctx.beginPath();
+    ctx.moveTo(cx - 8*s, cy - 2*s);
+    ctx.bezierCurveTo(cx - 9*s, cy - 6*s, cx - 8*s, cy - 10*s, cx - 7*s, cy - 13*s);
+    ctx.strokeStyle = '#2a6a22';
+    ctx.lineWidth = 0.8*s;
+    ctx.stroke();
+    // Folhinhas na hera
+    for (let i = 0; i < 4; i++) {
+        const ly = cy - 3*s - i*3*s;
+        const lx = cx - 8*s + Math.sin(i*1.5)*1.5*s;
+        ctx.beginPath();
+        ctx.ellipse(lx - 1*s, ly, 1.2*s, 0.7*s, -0.3 + i*0.2, 0, Math.PI*2);
+        ctx.fillStyle = i < 2 ? '#2e7a26' : '#38922e';
+        ctx.globalAlpha = 0.6;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+
+    // --- Folhas caídas (amarelas/marrons — outono) ---
+    const leafColors = ['#aa8830', '#88aa28', '#cc9920', '#7a9a20', '#bb8828'];
+    for (let i = 0; i < 5; i++) {
+        const lx = cx + (Math.sin(i*3.1)*12 - 2)*s;
+        const ly = cy + (1 + Math.cos(i*2.3)*2)*s;
+        ellipse(ctx, lx, ly, 1.2*s, 0.7*s, leafColors[i], 0.4);
+    }
+
+    // --- Bolota no chão ---
+    ellipse(ctx, cx + 2*s, cy + 3*s, 1*s, 1.3*s, '#8a6a30', 0.55);
+    ellipse(ctx, cx + 2*s, cy + 1.8*s, 1.3*s, 0.6*s, '#6a5020', 0.55);
+}
+
+
+// ============================================================
+//  RENDERIZAR
+// ============================================================
+const drawings = [
+    { prefix: 'pine_full',   fn: drawPineFull },
+    { prefix: 'pine_stump',  fn: drawPineStump },
+    { prefix: 'oak_full',    fn: drawOakFull },
+    { prefix: 'oak_stump',   fn: drawOakStump },
+];
+
+const sizes = [
+    { suffix: '_sm', scale: 1 },
+    { suffix: '_md', scale: 2 },
+    { suffix: '_lg', scale: 4 },
+];
+
+function renderAll() {
+    for (const d of drawings) {
+        for (const sz of sizes) {
+            const canvas = document.getElementById(d.prefix + sz.suffix);
+            if (!canvas) continue;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const cx = canvas.width / 2;
+            const cy = canvas.height * 0.82;
+            d.fn(ctx, cx, cy, sz.scale);
+        }
+    }
+}
+
+function setBg(color, btn) {
+    document.querySelectorAll('.bg-toggle button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('canvas').forEach(c => c.style.background = color);
+}
+
+renderAll();
+</script>
+</body>
+</html>

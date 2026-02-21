@@ -1,0 +1,10 @@
+// ========== REGISTRO GLOBAL DE MAPAS DE COMBATE ==========
+// Carregado APOS todos os arquivos individuais de mapas de combate
+
+const DB_COMBAT_MAPS = [
+    COMBAT_MAP_PADRAO,
+    COMBAT_MAP_CIDADE_CENTRO,
+    COMBAT_MAP_CIDADE_CAMPOS_NORTE,
+    COMBAT_MAP_CIDADE_CAMPOS_LESTE,
+    COMBAT_MAP_CIDADE_CAMPOS_SUL
+];

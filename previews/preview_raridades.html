@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Preview - Esquemas de Raridade</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; color: #ddd; font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; }
+    h1 { text-align: center; color: #fff; margin-bottom: 8px; font-size: 22px; }
+    .subtitle { text-align: center; color: #888; margin-bottom: 30px; font-size: 13px; }
+
+    .schemes { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+    .scheme { background: #16162b; border-radius: 12px; padding: 16px; width: 340px; border: 1px solid #333; }
+    .scheme-title { text-align: center; font-size: 16px; font-weight: 700; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #333; }
+
+    .inventory { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-bottom: 16px; }
+    .slot {
+        width: 58px; height: 58px;
+        background: #111;
+        border: 2px solid #333;
+        border-radius: 6px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 28px;
+        position: relative;
+        transition: all 0.3s;
+    }
+    .slot:hover { transform: scale(1.08); z-index: 2; }
+    .slot .qty {
+        position: absolute; bottom: 1px; right: 3px;
+        font-size: 9px; color: #ccc; font-weight: 700;
+        text-shadow: 0 0 3px #000, 0 0 3px #000;
+    }
+    .slot .rarity-label {
+        position: absolute; top: -1px; left: 2px;
+        font-size: 7px; font-weight: 700; letter-spacing: 0.3px;
+        text-shadow: 0 0 3px #000;
+    }
+
+    .legend { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+    .legend-swatch {
+        width: 28px; height: 16px; border-radius: 3px; border: 2px solid;
+        background: #111;
+    }
+    .legend-name { font-weight: 600; min-width: 70px; }
+    .legend-hex { color: #888; font-family: monospace; font-size: 10px; }
+
+    /* Glow animations for all schemes */
+    @keyframes glowA-raro {
+        0%, 100% { box-shadow: 0 0 6px rgba(68,153,238,0.5); }
+        50% { box-shadow: 0 0 14px rgba(68,153,238,0.8); }
+    }
+    @keyframes glowA-epico {
+        0%, 100% { box-shadow: 0 0 8px rgba(228,68,153,0.6); }
+        50% { box-shadow: 0 0 18px rgba(228,68,153,0.9); }
+    }
+    @keyframes glowA-lendario {
+        0%, 100% { box-shadow: 0 0 10px rgba(153,68,238,0.7); transform: scale(1); }
+        50% { box-shadow: 0 0 22px rgba(153,68,238,1); transform: scale(1.04); }
+    }
+
+    @keyframes glowB-raro {
+        0%, 100% { box-shadow: 0 0 6px rgba(52,152,219,0.5); }
+        50% { box-shadow: 0 0 14px rgba(52,152,219,0.8); }
+    }
+    @keyframes glowB-epico {
+        0%, 100% { box-shadow: 0 0 8px rgba(231,76,139,0.6); }
+        50% { box-shadow: 0 0 18px rgba(231,76,139,0.9); }
+    }
+    @keyframes glowB-lendario {
+        0%, 100% { box-shadow: 0 0 10px rgba(243,156,18,0.7); transform: scale(1); }
+        50% { box-shadow: 0 0 22px rgba(243,156,18,1); transform: scale(1.04); }
+    }
+
+    @keyframes glowC-raro {
+        0%, 100% { box-shadow: 0 0 6px rgba(41,128,185,0.5); }
+        50% { box-shadow: 0 0 14px rgba(41,128,185,0.8); }
+    }
+    @keyframes glowC-epico {
+        0%, 100% { box-shadow: 0 0 8px rgba(192,57,43,0.6); }
+        50% { box-shadow: 0 0 18px rgba(192,57,43,0.9); }
+    }
+    @keyframes glowC-lendario {
+        0%, 100% { box-shadow: 0 0 10px rgba(241,196,15,0.8); transform: scale(1); }
+        50% { box-shadow: 0 0 22px rgba(241,196,15,1); transform: scale(1.04); }
+    }
+
+    /* Scheme A - Current */
+    .schemeA .r-comum    { border-color: #666; }
+    .schemeA .r-incomum  { border-color: #4d4; box-shadow: 0 0 6px rgba(85,255,85,0.4); }
+    .schemeA .r-raro     { border-color: #49e; animation: glowA-raro 2s ease-in-out infinite; }
+    .schemeA .r-epico    { border-color: #e49; animation: glowA-epico 2s ease-in-out infinite; }
+    .schemeA .r-lendario { border-color: #94e; animation: glowA-lendario 2s ease-in-out infinite; }
+
+    .schemeA .r-comum .rarity-label    { color: #888; }
+    .schemeA .r-incomum .rarity-label   { color: #4d4; }
+    .schemeA .r-raro .rarity-label      { color: #5af; }
+    .schemeA .r-epico .rarity-label     { color: #f5a; }
+    .schemeA .r-lendario .rarity-label  { color: #a5f; }
+
+    /* Scheme B - Vibrant */
+    .schemeB .r-comum    { border-color: #8a8a8a; }
+    .schemeB .r-incomum  { border-color: #2ecc71; box-shadow: 0 0 6px rgba(46,204,113,0.4); }
+    .schemeB .r-raro     { border-color: #3498db; animation: glowB-raro 2s ease-in-out infinite; }
+    .schemeB .r-epico    { border-color: #e74c8b; animation: glowB-epico 2s ease-in-out infinite; }
+    .schemeB .r-lendario { border-color: #f39c12; animation: glowB-lendario 2s ease-in-out infinite; }
+
+    .schemeB .r-comum .rarity-label    { color: #8a8a8a; }
+    .schemeB .r-incomum .rarity-label   { color: #2ecc71; }
+    .schemeB .r-raro .rarity-label      { color: #3498db; }
+    .schemeB .r-epico .rarity-label     { color: #e74c8b; }
+    .schemeB .r-lendario .rarity-label  { color: #f39c12; }
+
+    /* Scheme C - Fantasia */
+    .schemeC .r-comum    { border-color: #7f8c8d; }
+    .schemeC .r-incomum  { border-color: #27ae60; box-shadow: 0 0 6px rgba(39,174,96,0.4); }
+    .schemeC .r-raro     { border-color: #2980b9; animation: glowC-raro 2s ease-in-out infinite; }
+    .schemeC .r-epico    { border-color: #c0392b; animation: glowC-epico 2s ease-in-out infinite; }
+    .schemeC .r-lendario { border-color: #f1c40f; animation: glowC-lendario 2s ease-in-out infinite; }
+
+    .schemeC .r-comum .rarity-label    { color: #7f8c8d; }
+    .schemeC .r-incomum .rarity-label   { color: #27ae60; }
+    .schemeC .r-raro .rarity-label      { color: #2980b9; }
+    .schemeC .r-epico .rarity-label     { color: #c0392b; }
+    .schemeC .r-lendario .rarity-label  { color: #f1c40f; }
+
+    .empty-slot { border-color: #222 !important; background: #0a0a15; }
+</style>
+</head>
+<body>
+
+<h1>Comparativo de Esquemas de Raridade</h1>
+<p class="subtitle">Passe o mouse sobre os itens para ver o efeito de destaque</p>
+
+<div class="schemes">
+
+<!-- ========== SCHEME A ========== -->
+<div class="scheme schemeA">
+    <div class="scheme-title" style="color:#c8c8ff">Opção A — Atual (Diablo/WoW)</div>
+
+    <!-- Row 1: Equipment -->
+    <div class="inventory">
+        <div class="slot r-comum"><span class="rarity-label">C</span>🪖</div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🗡️</div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>🛡️</div>
+        <div class="slot r-epico"><span class="rarity-label">E</span>👑</div>
+        <div class="slot r-lendario"><span class="rarity-label">L</span>🔮</div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>👕</div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🥾</div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>💍</div>
+        <div class="slot r-epico"><span class="rarity-label">E</span>📿</div>
+        <div class="slot r-lendario"><span class="rarity-label">L</span>⚔️</div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>🧤</div>
+        <div class="slot r-comum"><span class="rarity-label">C</span>🪵<span class="qty">50</span></div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🪨<span class="qty">30</span></div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>💎<span class="qty">5</span></div>
+        <div class="slot r-epico"><span class="rarity-label">E</span>🔥<span class="qty">2</span></div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>🧪<span class="qty">10</span></div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🍖<span class="qty">8</span></div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>✨<span class="qty">3</span></div>
+        <div class="slot r-lendario"><span class="rarity-label">L</span>🐉<span class="qty">1</span></div>
+        <div class="slot empty-slot"></div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>🦴<span class="qty">20</span></div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🪶<span class="qty">15</span></div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>🌿<span class="qty">7</span></div>
+        <div class="slot empty-slot"></div>
+        <div class="slot empty-slot"></div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#666"></div><span class="legend-name" style="color:#888">Comum</span><span class="legend-hex">#666</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#4d4;box-shadow:0 0 6px rgba(85,255,85,0.4)"></div><span class="legend-name" style="color:#4d4">Incomum</span><span class="legend-hex">#4d4</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#49e;box-shadow:0 0 8px rgba(68,153,238,0.6)"></div><span class="legend-name" style="color:#5af">Raro</span><span class="legend-hex">#49e + glow</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#e49;box-shadow:0 0 8px rgba(228,68,153,0.6)"></div><span class="legend-name" style="color:#f5a">Épico</span><span class="legend-hex">#e49 + glow</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#94e;box-shadow:0 0 10px rgba(153,68,238,0.7)"></div><span class="legend-name" style="color:#a5f">Lendário</span><span class="legend-hex">#94e + glow + scale</span></div>
+    </div>
+</div>
+
+<!-- ========== SCHEME B ========== -->
+<div class="scheme schemeB">
+    <div class="scheme-title" style="color:#f0d080">Opção B — Vibrante (Dourado Lendário)</div>
+
+    <div class="inventory">
+        <div class="slot r-comum"><span class="rarity-label">C</span>🪖</div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🗡️</div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>🛡️</div>
+        <div class="slot r-epico"><span class="rarity-label">E</span>👑</div>
+        <div class="slot r-lendario"><span class="rarity-label">L</span>🔮</div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>👕</div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🥾</div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>💍</div>
+        <div class="slot r-epico"><span class="rarity-label">E</span>📿</div>
+        <div class="slot r-lendario"><span class="rarity-label">L</span>⚔️</div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>🧤</div>
+        <div class="slot r-comum"><span class="rarity-label">C</span>🪵<span class="qty">50</span></div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🪨<span class="qty">30</span></div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>💎<span class="qty">5</span></div>
+        <div class="slot r-epico"><span class="rarity-label">E</span>🔥<span class="qty">2</span></div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>🧪<span class="qty">10</span></div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🍖<span class="qty">8</span></div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>✨<span class="qty">3</span></div>
+        <div class="slot r-lendario"><span class="rarity-label">L</span>🐉<span class="qty">1</span></div>
+        <div class="slot empty-slot"></div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>🦴<span class="qty">20</span></div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🪶<span class="qty">15</span></div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>🌿<span class="qty">7</span></div>
+        <div class="slot empty-slot"></div>
+        <div class="slot empty-slot"></div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#8a8a8a"></div><span class="legend-name" style="color:#8a8a8a">Comum</span><span class="legend-hex">#8a8a8a</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#2ecc71;box-shadow:0 0 6px rgba(46,204,113,0.4)"></div><span class="legend-name" style="color:#2ecc71">Incomum</span><span class="legend-hex">#2ecc71</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#3498db;box-shadow:0 0 8px rgba(52,152,219,0.6)"></div><span class="legend-name" style="color:#3498db">Raro</span><span class="legend-hex">#3498db + glow</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#e74c8b;box-shadow:0 0 8px rgba(231,76,139,0.6)"></div><span class="legend-name" style="color:#e74c8b">Épico</span><span class="legend-hex">#e74c8b + glow</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#f39c12;box-shadow:0 0 10px rgba(243,156,18,0.7)"></div><span class="legend-name" style="color:#f39c12">Lendário</span><span class="legend-hex">#f39c12 + glow + scale</span></div>
+    </div>
+</div>
+
+<!-- ========== SCHEME C ========== -->
+<div class="scheme schemeC">
+    <div class="scheme-title" style="color:#f1c40f">Opção C — Fantasia</div>
+
+    <div class="inventory">
+        <div class="slot r-comum"><span class="rarity-label">C</span>🪖</div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🗡️</div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>🛡️</div>
+        <div class="slot r-epico"><span class="rarity-label">E</span>👑</div>
+        <div class="slot r-lendario"><span class="rarity-label">L</span>🔮</div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>👕</div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🥾</div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>💍</div>
+        <div class="slot r-epico"><span class="rarity-label">E</span>📿</div>
+        <div class="slot r-lendario"><span class="rarity-label">L</span>⚔️</div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>🧤</div>
+        <div class="slot r-comum"><span class="rarity-label">C</span>🪵<span class="qty">50</span></div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🪨<span class="qty">30</span></div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>💎<span class="qty">5</span></div>
+        <div class="slot r-epico"><span class="rarity-label">E</span>🔥<span class="qty">2</span></div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>🧪<span class="qty">10</span></div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🍖<span class="qty">8</span></div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>✨<span class="qty">3</span></div>
+        <div class="slot r-lendario"><span class="rarity-label">L</span>🐉<span class="qty">1</span></div>
+        <div class="slot empty-slot"></div>
+
+        <div class="slot r-comum"><span class="rarity-label">C</span>🦴<span class="qty">20</span></div>
+        <div class="slot r-incomum"><span class="rarity-label">I</span>🪶<span class="qty">15</span></div>
+        <div class="slot r-raro"><span class="rarity-label">R</span>🌿<span class="qty">7</span></div>
+        <div class="slot empty-slot"></div>
+        <div class="slot empty-slot"></div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#7f8c8d"></div><span class="legend-name" style="color:#7f8c8d">Comum</span><span class="legend-hex">#7f8c8d</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#27ae60;box-shadow:0 0 6px rgba(39,174,96,0.4)"></div><span class="legend-name" style="color:#27ae60">Incomum</span><span class="legend-hex">#27ae60</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#2980b9;box-shadow:0 0 8px rgba(41,128,185,0.6)"></div><span class="legend-name" style="color:#2980b9">Raro</span><span class="legend-hex">#2980b9 + glow</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#c0392b;box-shadow:0 0 8px rgba(192,57,43,0.6)"></div><span class="legend-name" style="color:#c0392b">Épico</span><span class="legend-hex">#c0392b + glow</span></div>
+        <div class="legend-item"><div class="legend-swatch" style="border-color:#f1c40f;box-shadow:0 0 10px rgba(241,196,15,0.8)"></div><span class="legend-name" style="color:#f1c40f">Lendário</span><span class="legend-hex">#f1c40f + glow + scale</span></div>
+    </div>
+</div>
+
+</div>
+
+</body>
+</html>

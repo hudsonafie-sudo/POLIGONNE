@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Preview - Sprites Zefir (Drag & Drop)</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #1a1a2e; color: #eee; font-family: Arial, sans-serif;
+    padding: 20px; min-height: 100vh; user-select: none;
+}
+h1 { text-align: center; color: #7ec8a0; margin-bottom: 5px; font-size: 22px; }
+.subtitle { text-align: center; color: #aaa; margin-bottom: 20px; font-size: 13px; }
+
+.layout { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; align-items: flex-start; }
+
+/* === Painel de sprites disponíveis === */
+.sprites-panel {
+    background: #16213e; border-radius: 12px; padding: 15px;
+    border: 1px solid #333; min-width: 260px; max-width: 380px;
+}
+.sprites-panel h2 { font-size: 16px; color: #0ff; margin-bottom: 5px; }
+.sheet-tabs { margin-bottom: 8px; }
+.sheet-tabs .sheet-label {
+    font-size: 12px; color: #888; cursor: pointer;
+    padding: 4px 8px; border-radius: 6px; display: inline-block;
+    border: 1px solid #444; margin-right: 3px; margin-bottom: 3px;
+}
+.sheet-tabs .sheet-label.active { background: #0f3460; border-color: #0ff; color: #0ff; }
+.sprite-pool {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    min-height: 80px; padding: 8px 0;
+}
+.sprite-thumb {
+    width: 80px; height: 120px; border-radius: 8px; overflow: hidden;
+    border: 2px solid #555; cursor: grab; position: relative;
+    background: #111; transition: border-color 0.2s, transform 0.15s;
+    flex-shrink: 0;
+}
+.sprite-thumb:hover { border-color: #7ec8a0; transform: scale(1.05); }
+.sprite-thumb.dragging { opacity: 0.4; }
+.sprite-thumb canvas { width: 100%; height: 100%; display: block; }
+.sprite-thumb .badge {
+    position: absolute; top: 2px; left: 2px; background: #000b; color: #ff0;
+    font-size: 10px; font-weight: bold; padding: 1px 4px; border-radius: 4px;
+}
+.sprite-thumb .src-label {
+    position: absolute; bottom: 2px; right: 2px; font-size: 9px; color: #aaa;
+    background: #000b; padding: 1px 4px; border-radius: 3px;
+}
+
+/* === Painel de direções === */
+.directions-panel {
+    background: #16213e; border-radius: 12px; padding: 15px;
+    border: 1px solid #333;
+}
+.directions-panel h2 { font-size: 16px; color: #0ff; margin-bottom: 10px; }
+.dir-grid {
+    display: grid; grid-template-columns: repeat(3, 140px); grid-template-rows: repeat(3, auto);
+    gap: 8px; justify-items: center; align-items: start;
+}
+.dir-slot {
+    width: 130px; min-height: 170px; border: 2px dashed #555; border-radius: 10px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative; padding: 6px;
+}
+.dir-slot.drag-over { border-color: #0f0; background: #0f02; }
+.dir-slot .dir-label { font-weight: bold; font-size: 15px; color: #7ec8a0; margin-bottom: 2px; }
+.dir-slot .dir-sub { font-size: 10px; color: #666; margin-bottom: 4px; }
+.dir-slot.center-cell { border: none; background: none; min-height: auto; }
+.dir-slot .placed-sprite {
+    width: 80px; height: 120px; border-radius: 6px; overflow: hidden;
+    background: #111; cursor: grab; position: relative; border: 2px solid #0f0;
+}
+.dir-slot .placed-sprite.mirrored canvas { transform: scaleX(-1); }
+.dir-slot .placed-sprite canvas { width: 100%; height: 100%; display: block; }
+.dir-slot .placed-sprite .badge {
+    position: absolute; top: 2px; left: 2px; background: #000b; color: #ff0;
+    font-size: 9px; font-weight: bold; padding: 1px 4px; border-radius: 3px;
+}
+.dir-slot .placed-sprite .mirror-badge {
+    position: absolute; top: 2px; right: 2px; background: #00fa; color: #fff;
+    font-size: 8px; padding: 1px 3px; border-radius: 3px;
+}
+.dir-slot .slot-actions { display: flex; gap: 3px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
+.btn-small {
+    font-size: 10px; padding: 3px 6px; border-radius: 4px; border: none;
+    cursor: pointer; transition: background 0.2s;
+}
+.btn-remove { background: #a33; color: #fff; }
+.btn-remove:hover { background: #c44; }
+.btn-none { background: #555; color: #ff0; }
+.btn-none:hover { background: #777; }
+.btn-mirror { background: #069; color: #fff; }
+.btn-mirror:hover { background: #08b; }
+.dir-slot .none-marker { color: #f66; font-size: 13px; font-weight: bold; margin: 10px 0; }
+.dir-slot.has-none { border-color: #f66; border-style: solid; background: #f002; }
+.dir-slot.has-sprite { border-color: #0f0; border-style: solid; background: #0f01; }
+.dir-slot.has-mirror { border-color: #08f; border-style: solid; background: #08f1; }
+
+/* === Resultado === */
+.result-panel {
+    margin-top: 20px; background: #16213e; border-radius: 12px; padding: 15px;
+    border: 1px solid #333; text-align: center;
+}
+.result-panel h2 { font-size: 16px; color: #0ff; margin-bottom: 10px; }
+#result-text {
+    background: #0a0a1a; padding: 12px; border-radius: 8px; font-family: monospace;
+    font-size: 13px; text-align: left; display: inline-block; min-width: 400px;
+    white-space: pre; color: #ccc; min-height: 80px;
+}
+.btn-copy {
+    margin-top: 10px; padding: 8px 20px; background: #7ec8a0; color: #000;
+    border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;
+}
+.btn-copy:hover { background: #9edaba; }
+.info-box {
+    margin-top: 10px; background: #1a1a2e; border: 1px solid #333; border-radius: 8px;
+    padding: 10px; font-size: 12px; color: #888; text-align: left;
+}
+.info-box b { color: #0ff; }
+</style>
+</head>
+<body>
+
+<h1>Sprites do Zefir - Arraste para as Direções</h1>
+<p class="subtitle">Arraste sprites para as direções. Use "Espelhar" para criar espelho de outro slot. "Nenhum serve" se falta sprite.</p>
+
+<div class="layout">
+    <div class="sprites-panel">
+        <h2>Sprites Disponíveis</h2>
+        <div class="sheet-tabs" id="sheet-tabs"></div>
+        <div class="sprite-pool" id="sprite-pool"></div>
+        <div class="info-box" id="info-box"></div>
+    </div>
+
+    <div class="directions-panel">
+        <h2>Direções (arraste aqui)</h2>
+        <div class="dir-grid" id="dir-grid"></div>
+    </div>
+</div>
+
+<div class="result-panel">
+    <h2>Resultado</h2>
+    <div id="result-text">Carregando...</div>
+    <br>
+    <button class="btn-copy" onclick="copyResult()">Copiar Resultado</button>
+</div>
+
+<script>
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  CONFIGURAÇÃO — altere aqui para cada personagem            ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+var CHARACTER_NAME = 'Zefir';
+var SPRITE_PATH = '../img/sprites/zefir/';
+
+// Definir spritesheets: src, label (aba), id, cols, rows, fw (frame width), fh (frame height)
+// Opcional: ox, oy = offset em pixels antes de começar o grid (para cortar bordas vazias)
+var sheetDefs = [
+    { src: SPRITE_PATH + 'front_back.png',      label: 'FB',  id: 1, cols: 2, rows: 1, fw: 384, fh: 650, oy: 60 },
+    { src: SPRITE_PATH + 'angles_4view.png',     label: 'A1',  id: 2, cols: 2, rows: 2, fw: 384, fh: 384 },
+    { src: SPRITE_PATH + 'angles_4view_b.png',   label: 'A2',  id: 3, cols: 2, rows: 2, fw: 384, fh: 384 },
+];
+
+// Pre-população opcional (deixe vazio para não pre-popular)
+function prePopulate() {
+    // Exemplo: slotState['S'] = { sheetId: 1, frameNum: 1, col: 0, row: 0, label: 'FB' };
+}
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  ENGINE — não precisa alterar abaixo                        ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+var directions = ['NW','N','NE','W',null,'E','SW','S','SE'];
+var allDirs = ['NW','N','NE','W','E','SW','S','SE'];
+
+var slotState = {};
+var allThumbs = [];
+var currentSheetFilter = 0;
+var dragData = null;
+var sheetsLoaded = 0;
+
+function getSheetLabel(id) {
+    for (var i = 0; i < sheetDefs.length; i++) {
+        if (sheetDefs[i].id === id) return sheetDefs[i].label;
+    }
+    return '?';
+}
+
+// Build sheet tabs dynamically
+function buildTabs() {
+    var tabs = document.getElementById('sheet-tabs');
+    var html = '<span class="sheet-label active" data-sheet="0" onclick="switchSheet(0)">Todos</span>';
+    sheetDefs.forEach(function(s) {
+        html += '<span class="sheet-label" data-sheet="' + s.id + '" onclick="switchSheet(' + s.id + ')">' + s.label + '</span>';
+    });
+    tabs.innerHTML = html;
+
+    var info = document.getElementById('info-box');
+    var lines = [];
+    sheetDefs.forEach(function(s) {
+        var filename = s.src.split('/').pop();
+        lines.push('<b>' + s.label + '</b> = ' + filename + ' (' + s.cols + 'x' + s.rows + ', ' + s.fw + 'x' + s.fh + 'px)');
+    });
+    lines.push('<b>Espelhar</b> = usa sprite de outra direção espelhado horizontalmente');
+    info.innerHTML = lines.join('<br>');
+}
+
+function initDirGrid() {
+    var grid = document.getElementById('dir-grid');
+    grid.innerHTML = '';
+    directions.forEach(function(dir) {
+        var slot = document.createElement('div');
+        slot.className = 'dir-slot' + (dir === null ? ' center-cell' : '');
+        if (dir === null) {
+            slot.innerHTML = '<span style="color:#444;font-size:28px;">⬥</span>';
+            grid.appendChild(slot);
+            return;
+        }
+        slot.dataset.dir = dir;
+        renderSlot(slot, dir);
+        slot.addEventListener('dragover', function(e) { e.preventDefault(); slot.classList.add('drag-over'); });
+        slot.addEventListener('dragleave', function() { slot.classList.remove('drag-over'); });
+        slot.addEventListener('drop', function(e) {
+            e.preventDefault(); slot.classList.remove('drag-over');
+            if (dragData) dropSprite(dir, dragData);
+        });
+        grid.appendChild(slot);
+    });
+}
+
+function renderSlot(slot, dir) {
+    var state = slotState[dir];
+    slot.classList.remove('has-none','has-sprite','has-mirror');
+    var html = '<div class="dir-label">' + dir + '</div>';
+
+    if (state === 'none') {
+        slot.classList.add('has-none');
+        html += '<div class="none-marker">✕ Nenhum serve</div>';
+        html += '<div class="slot-actions">';
+        html += '<button class="btn-small btn-remove" onclick="removeSlot(\'' + dir + '\')">Limpar</button>';
+        html += '</div>';
+    } else if (state && state.mirror) {
+        slot.classList.add('has-mirror');
+        html += '<div class="dir-sub">espelho de ' + state.mirrorOf + '</div>';
+        html += '<div class="drop-zone"><div class="placed-sprite mirrored" id="placed-' + dir + '"></div></div>';
+        html += '<div class="slot-actions">';
+        html += '<button class="btn-small btn-remove" onclick="removeSlot(\'' + dir + '\')">Remover</button>';
+        html += '</div>';
+    } else if (state) {
+        slot.classList.add('has-sprite');
+        html += '<div class="dir-sub">' + state.label + ' #' + state.frameNum + '</div>';
+        html += '<div class="drop-zone"><div class="placed-sprite" id="placed-' + dir + '"></div></div>';
+        html += '<div class="slot-actions">';
+        html += '<button class="btn-small btn-remove" onclick="removeSlot(\'' + dir + '\')">Remover</button>';
+        html += '<button class="btn-small btn-none" onclick="markNone(\'' + dir + '\')">Nenhum</button>';
+        html += '</div>';
+    } else {
+        html += '<div class="dir-sub">sprite único</div>';
+        html += '<div class="drop-zone" style="min-height:60px;display:flex;align-items:center;justify-content:center;">';
+        html += '<span style="color:#555;font-size:11px;">arraste aqui</span></div>';
+        html += '<div class="slot-actions">';
+        html += '<button class="btn-small btn-none" onclick="markNone(\'' + dir + '\')">Nenhum serve</button>';
+        html += buildMirrorButtons(dir);
+        html += '</div>';
+    }
+    slot.innerHTML = html;
+
+    // Draw canvas for placed sprites
+    if (state && state !== 'none') {
+        var container = slot.querySelector('#placed-' + dir);
+        if (container) {
+            var srcState = state.mirror ? slotState[state.mirrorOf] : state;
+            if (srcState && srcState !== 'none') {
+                var thumb = allThumbs.find(function(t) {
+                    return t.sheetId === srcState.sheetId && t.frameNum === srcState.frameNum;
+                });
+                if (thumb) {
+                    var c = document.createElement('canvas');
+                    c.width = thumb.canvas.width; c.height = thumb.canvas.height;
+                    c.getContext('2d').drawImage(thumb.canvas, 0, 0);
+                    container.appendChild(c);
+                    var badge = document.createElement('div');
+                    badge.className = 'badge';
+                    badge.textContent = srcState.label + ' #' + srcState.frameNum;
+                    container.appendChild(badge);
+                    if (state.mirror) {
+                        var mb = document.createElement('div');
+                        mb.className = 'mirror-badge';
+                        mb.textContent = '↔';
+                        container.appendChild(mb);
+                    }
+                }
+            }
+            // Make placed sprite draggable back
+            if (!state.mirror) {
+                container.draggable = true;
+                container.addEventListener('dragstart', function() {
+                    dragData = { sheetId: state.sheetId, frameNum: state.frameNum, col: state.col, row: state.row, label: state.label };
+                    container.style.opacity = '0.4';
+                });
+                container.addEventListener('dragend', function() { container.style.opacity = '1'; dragData = null; });
+            }
+        }
+    }
+}
+
+function buildMirrorButtons(dir) {
+    var pairs = { 'SE':'SW', 'SW':'SE', 'E':'W', 'W':'E', 'NE':'NW', 'NW':'NE' };
+    var opposite = pairs[dir];
+    if (!opposite) return '';
+    return '<button class="btn-small btn-mirror" onclick="mirrorFrom(\'' + dir + '\',\'' + opposite + '\')">Espelhar ' + opposite + '</button>';
+}
+
+function dropSprite(dir, data) {
+    // Remove from any previous slot
+    Object.keys(slotState).forEach(function(d) {
+        var s = slotState[d];
+        if (s && s !== 'none' && !s.mirror && s.sheetId === data.sheetId && s.frameNum === data.frameNum) {
+            slotState[d] = null;
+            Object.keys(slotState).forEach(function(d2) {
+                var s2 = slotState[d2];
+                if (s2 && s2.mirror && s2.mirrorOf === d) slotState[d2] = null;
+            });
+        }
+    });
+    slotState[dir] = { sheetId: data.sheetId, frameNum: data.frameNum, col: data.col, row: data.row, label: data.label || getSheetLabel(data.sheetId) };
+    refreshAll();
+}
+
+function mirrorFrom(dir, srcDir) {
+    var src = slotState[srcDir];
+    if (!src || src === 'none' || src.mirror) {
+        alert('Primeiro coloque um sprite em ' + srcDir + ' para espelhar.');
+        return;
+    }
+    slotState[dir] = { mirror: true, mirrorOf: srcDir };
+    refreshAll();
+}
+
+function markNone(dir) {
+    slotState[dir] = slotState[dir] === 'none' ? null : 'none';
+    refreshAll();
+}
+
+function removeSlot(dir) {
+    Object.keys(slotState).forEach(function(d) {
+        var s = slotState[d];
+        if (s && s.mirror && s.mirrorOf === dir) slotState[d] = null;
+    });
+    slotState[dir] = null;
+    refreshAll();
+}
+
+function refreshAll() {
+    directions.forEach(function(dir) {
+        if (!dir) return;
+        var slot = document.querySelector('.dir-slot[data-dir="' + dir + '"]');
+        if (slot) renderSlot(slot, dir);
+    });
+    allThumbs.forEach(function(t) {
+        var placed = Object.values(slotState).some(function(s) {
+            return s && s !== 'none' && !s.mirror && s.sheetId === t.sheetId && s.frameNum === t.frameNum;
+        });
+        if (placed) { t.el.style.display = 'none'; return; }
+        if (currentSheetFilter === 0 || t.sheetId === currentSheetFilter) {
+            t.el.style.display = '';
+        } else {
+            t.el.style.display = 'none';
+        }
+    });
+    updateResult();
+}
+
+function switchSheet(n) {
+    currentSheetFilter = n;
+    document.querySelectorAll('.sheet-label').forEach(function(l) {
+        l.classList.toggle('active', parseInt(l.dataset.sheet) === n);
+    });
+    refreshAll();
+}
+
+function updateResult() {
+    var lines = [CHARACTER_NAME + ' — Mapeamento de Sprites', ''];
+    allDirs.forEach(function(dir) {
+        var s = slotState[dir];
+        if (!s) { lines.push(dir + ':  (não definido)'); }
+        else if (s === 'none') { lines.push(dir + ':  NENHUM SERVE'); }
+        else if (s.mirror) {
+            var src = slotState[s.mirrorOf];
+            if (src && src !== 'none' && !src.mirror) {
+                lines.push(dir + ':  ESPELHO de ' + s.mirrorOf + ' (' + src.label + ' #' + src.frameNum + ')');
+            } else {
+                lines.push(dir + ':  ESPELHO de ' + s.mirrorOf + ' (sem sprite)');
+            }
+        } else {
+            lines.push(dir + ':  ' + s.label + ' Frame #' + s.frameNum + ' (col ' + s.col + ', row ' + s.row + ')');
+        }
+    });
+    document.getElementById('result-text').textContent = lines.join('\n');
+}
+
+function copyResult() {
+    var text = document.getElementById('result-text').textContent;
+    navigator.clipboard.writeText(text).then(function() {
+        var btn = document.querySelector('.btn-copy');
+        btn.textContent = 'Copiado!'; setTimeout(function() { btn.textContent = 'Copiar Resultado'; }, 1500);
+    });
+}
+
+function loadSheetFrames(sheetInfo) {
+    var img = new Image();
+    img.onload = function() {
+        var pool = document.getElementById('sprite-pool');
+        var frameNum = 1;
+        for (var row = 0; row < sheetInfo.rows; row++) {
+            for (var col = 0; col < sheetInfo.cols; col++) {
+                var thumb = document.createElement('div');
+                thumb.className = 'sprite-thumb';
+                thumb.draggable = true;
+                thumb.dataset.sheet = sheetInfo.id;
+                thumb.dataset.frame = frameNum;
+
+                var canvas = document.createElement('canvas');
+                canvas.width = sheetInfo.fw; canvas.height = sheetInfo.fh;
+                var sx = (sheetInfo.ox || 0) + col * sheetInfo.fw;
+                var sy = (sheetInfo.oy || 0) + row * sheetInfo.fh;
+                canvas.getContext('2d').drawImage(img, sx, sy, sheetInfo.fw, sheetInfo.fh, 0, 0, sheetInfo.fw, sheetInfo.fh);
+                thumb.appendChild(canvas);
+
+                var badge = document.createElement('div');
+                badge.className = 'badge';
+                badge.textContent = '#' + frameNum;
+                thumb.appendChild(badge);
+
+                var srcLabel = document.createElement('div');
+                srcLabel.className = 'src-label';
+                srcLabel.textContent = sheetInfo.label;
+                thumb.appendChild(srcLabel);
+
+                (function(t, sid, fn, c, r, lbl) {
+                    t.addEventListener('dragstart', function() {
+                        dragData = { sheetId: sid, frameNum: fn, col: c, row: r, label: lbl };
+                        t.classList.add('dragging');
+                    });
+                    t.addEventListener('dragend', function() {
+                        t.classList.remove('dragging'); dragData = null;
+                    });
+                })(thumb, sheetInfo.id, frameNum, col, row, sheetInfo.label);
+
+                allThumbs.push({ el: thumb, sheetId: sheetInfo.id, frameNum: frameNum, col: col, row: row, canvas: canvas });
+                pool.appendChild(thumb);
+                frameNum++;
+            }
+        }
+        sheetsLoaded++;
+        if (sheetsLoaded >= sheetDefs.length) {
+            prePopulate();
+            refreshAll();
+        }
+    };
+    img.onerror = function() { sheetsLoaded++; if (sheetsLoaded >= sheetDefs.length) { prePopulate(); refreshAll(); } };
+    img.src = sheetInfo.src;
+}
+
+buildTabs();
+initDirGrid();
+sheetDefs.forEach(loadSheetFrames);
+</script>
+
+</body>
+</html>

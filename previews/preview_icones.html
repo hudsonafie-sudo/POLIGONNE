@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Preview - Biblioteca Completa de Ícones</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            color: #eee;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            padding: 20px;
+        }
+        h1 { text-align: center; color: #ffd700; margin-bottom: 10px; font-size: 26px; }
+        .subtitle { text-align: center; color: #888; margin-bottom: 25px; font-size: 14px; }
+        h2 {
+            color: #aabbff; margin: 20px 0 12px; padding-bottom: 6px;
+            border-bottom: 2px solid #333; font-size: 18px; cursor: pointer; user-select: none;
+        }
+        h2:hover { color: #ccddff; }
+        h2 .toggle { font-size: 14px; color: #666; margin-left: 8px; }
+        .stats { color: #6a8; font-size: 13px; margin-bottom: 20px; padding: 10px; background: rgba(0,100,50,0.15); border-radius: 8px; }
+
+        /* Navegação por tabs */
+        .tab-bar { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:20px; }
+        .tab-btn {
+            padding: 8px 16px; border-radius: 6px; border: 2px solid #444;
+            background: rgba(0,0,0,0.3); color: #aaa; cursor: pointer; font-size: 13px;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { border-color: #888; color: #eee; }
+        .tab-btn.active { border-color: #ffd700; color: #ffd700; background: rgba(255,215,0,0.1); }
+        .tab-btn .count { font-size: 11px; color: #666; margin-left: 4px; }
+
+        /* Slots vazios */
+        .empty-slots-grid { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; }
+        .empty-slot-card { text-align: center; }
+        .empty-slot-box {
+            width: 48px; height: 48px; background: rgba(0,0,0,0.4);
+            border: 2px solid #555; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; margin: 0 auto; opacity: 0.6;
+        }
+        .empty-slot-box.weapon,.empty-slot-box.weaponLeft { border-color: #a55; }
+        .empty-slot-box.helmet { border-color: #55a; }
+        .empty-slot-box.chest { border-color: #5a5; }
+        .empty-slot-box.legs { border-color: #a5a; }
+        .empty-slot-box.boots { border-color: #5aa; }
+        .empty-slot-box.cape { border-color: #aa5; }
+        .empty-slot-box.belt { border-color: #8a5; }
+        .empty-slot-box.amulet { border-color: #d5d; }
+        .empty-slot-box.ring { border-color: #a85; }
+        .empty-slot-box.bag { border-color: #a95; }
+        .empty-slot-label { font-size: 10px; color: #999; margin-top: 4px; }
+
+        /* Grid compacto de ícones - cada ícone mostra 4 paletas representativas */
+        .icon-row {
+            display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+            padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px;
+            align-items: center;
+        }
+        .icon-row .icon-label {
+            width: 140px; font-size: 11px; color: #bbb; flex-shrink: 0;
+        }
+        .icon-row .icon-label .icon-id { font-size: 9px; color: #666; display: block; }
+        .icon-cell {
+            width: 44px; height: 44px; background: rgba(0,0,0,0.4);
+            border-radius: 6px; border: 1px solid #333;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+        .icon-cell .pal-tag {
+            position: absolute; bottom: -1px; right: 1px; font-size: 7px;
+            color: #555; pointer-events: none;
+        }
+
+        /* Expansão - mostrar todas as paletas */
+        .expand-btn {
+            padding: 3px 10px; border-radius: 4px; border: 1px solid #555;
+            background: rgba(255,255,255,0.05); color: #888; cursor: pointer;
+            font-size: 10px; margin-left: 8px;
+        }
+        .expand-btn:hover { border-color: #aaa; color: #ddd; }
+        .all-palettes { display: none; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+        .all-palettes.show { display: flex; }
+        .pal-mini { width: 36px; height: 36px; background: rgba(0,0,0,0.3); border-radius: 4px;
+            display: flex; align-items: center; justify-content: center; border: 1px solid #333; }
+
+        .section-divider { border: none; border-top: 3px solid #333; margin: 30px 0; }
+        .slot-section { display: none; }
+        .slot-section.active { display: block; }
+    </style>
+</head>
+<body>
+    <h1>Biblioteca Completa de Ícones de Equipamento</h1>
+    <div class="subtitle">Todos os ícones SVG do jogo com variantes de cor</div>
+    <div id="stats" class="stats"></div>
+
+    <h2>Slots Vazios (Imagem Escura)</h2>
+    <div id="empty-slots" class="empty-slots-grid"></div>
+
+    <hr class="section-divider">
+
+    <div id="tab-bar" class="tab-bar"></div>
+    <div id="icon-sections"></div>
+
+    <script src="../dados/icones_equipamentos.js"></script>
+    <script src="../dados/gerador_icones.js"></script>
+    <script src="../dados/icones_tematicos.js"></script>
+    <script>
+        const SLOT_NAMES = {
+            helmet:'Elmo', chest:'Peitoral', legs:'Pernas', boots:'Botas',
+            cape:'Capa', belt:'Cinto', ring:'Anel', amulet:'Amuleto',
+            weapon:'Arma', bag:'Bolsa'
+        };
+        const SLOT_COLORS = {
+            helmet:'#55a', chest:'#5a5', legs:'#a5a', boots:'#5aa',
+            cape:'#aa5', belt:'#8a5', amulet:'#d5d', ring:'#a85',
+            weapon:'#a55', bag:'#a95'
+        };
+        // 4 paletas representativas para exibição compacta
+        const PREVIEW_PALETTES = ['iron','gold','arcane','blood'];
+
+        // === ESTATÍSTICAS ===
+        var totalIcons = 0;
+        var slotKeys = Object.keys(EQUIP_ICON_LIBRARY);
+        var statsText = '';
+        slotKeys.forEach(function(k){
+            var count = EQUIP_ICON_LIBRARY[k].length;
+            totalIcons += count;
+            statsText += (SLOT_NAMES[k]||k) + ': ' + count + ' | ';
+        });
+        document.getElementById('stats').textContent =
+            'Total: ' + totalIcons + ' ícones × ' + EQUIP_COLOR_PALETTES.length + ' paletas = ' +
+            (totalIcons * EQUIP_COLOR_PALETTES.length) + ' combinações — ' + statsText.slice(0,-3);
+
+        // === SLOTS VAZIOS ===
+        var emptySlotsDiv = document.getElementById('empty-slots');
+        var emptyTypes = ['helmet','chest','legs','boots','cape','belt','amulet','ring','weapon','weaponLeft','bag'];
+        emptyTypes.forEach(function(slotType){
+            var card = document.createElement('div'); card.className = 'empty-slot-card';
+            var box = document.createElement('div'); box.className = 'empty-slot-box ' + slotType;
+            var svgEl = renderEmptySlotIcon(slotType, 32);
+            if(svgEl) box.appendChild(svgEl); else box.textContent = '?';
+            var label = document.createElement('div'); label.className = 'empty-slot-label';
+            label.textContent = slotType==='weaponLeft'?'Mão Esq.':(SLOT_NAMES[slotType]||slotType);
+            card.appendChild(box); card.appendChild(label); emptySlotsDiv.appendChild(card);
+        });
+
+        // === TABS DE NAVEGAÇÃO ===
+        var tabBar = document.getElementById('tab-bar');
+        var sectionsDiv = document.getElementById('icon-sections');
+        var sections = {};
+
+        slotKeys.forEach(function(slotKey, idx){
+            var icons = EQUIP_ICON_LIBRARY[slotKey];
+            var slotName = SLOT_NAMES[slotKey] || slotKey;
+
+            // Tab
+            var tab = document.createElement('div'); tab.className = 'tab-btn';
+            tab.innerHTML = slotName + '<span class="count">(' + icons.length + ')</span>';
+            tab.dataset.slot = slotKey;
+            tab.onclick = function(){ activateTab(slotKey); };
+            tabBar.appendChild(tab);
+
+            // Seção
+            var section = document.createElement('div');
+            section.className = 'slot-section';
+            section.id = 'section-' + slotKey;
+
+            var title = document.createElement('h2');
+            title.textContent = slotName + ' — ' + icons.length + ' variações';
+            title.style.borderColor = SLOT_COLORS[slotKey] || '#555';
+            section.appendChild(title);
+
+            // Renderizar ícones
+            icons.forEach(function(iconData, iconIdx){
+                var row = document.createElement('div'); row.className = 'icon-row';
+
+                // Label
+                var label = document.createElement('div'); label.className = 'icon-label';
+                label.innerHTML = iconData.name + '<span class="icon-id">' + iconData.id + '</span>';
+                row.appendChild(label);
+
+                // 4 paletas preview
+                PREVIEW_PALETTES.forEach(function(palId){
+                    var pal = getEquipPaletteById(palId);
+                    var cell = document.createElement('div'); cell.className = 'icon-cell';
+                    var svg = renderEquipIconSvg(iconData, pal, 34, false);
+                    if(svg) cell.appendChild(svg);
+                    var tag = document.createElement('span'); tag.className = 'pal-tag'; tag.textContent = palId.substring(0,3);
+                    cell.appendChild(tag);
+                    row.appendChild(cell);
+                });
+
+                // Botão expandir
+                var expBtn = document.createElement('button'); expBtn.className = 'expand-btn';
+                expBtn.textContent = '+ todas';
+                var allPalDiv = document.createElement('div'); allPalDiv.className = 'all-palettes';
+                expBtn.onclick = function(){
+                    if(allPalDiv.classList.contains('show')){
+                        allPalDiv.classList.remove('show'); expBtn.textContent = '+ todas';
+                    } else {
+                        // Renderizar se vazio
+                        if(!allPalDiv.hasChildNodes()){
+                            EQUIP_COLOR_PALETTES.forEach(function(pal){
+                                var mini = document.createElement('div'); mini.className = 'pal-mini';
+                                mini.title = pal.name;
+                                var svg = renderEquipIconSvg(iconData, pal, 28, false);
+                                if(svg) mini.appendChild(svg);
+                                allPalDiv.appendChild(mini);
+                            });
+                        }
+                        allPalDiv.classList.add('show'); expBtn.textContent = '- fechar';
+                    }
+                };
+                row.appendChild(expBtn);
+                row.appendChild(allPalDiv);
+
+                section.appendChild(row);
+            });
+
+            sectionsDiv.appendChild(section);
+            sections[slotKey] = section;
+        });
+
+        function activateTab(slotKey){
+            document.querySelectorAll('.tab-btn').forEach(function(t){ t.classList.remove('active'); });
+            document.querySelectorAll('.slot-section').forEach(function(s){ s.classList.remove('active'); });
+            document.querySelector('.tab-btn[data-slot="'+slotKey+'"]').classList.add('active');
+            document.getElementById('section-'+slotKey).classList.add('active');
+        }
+
+        // Ativar primeira tab
+        if(slotKeys.length > 0) activateTab(slotKeys[0]);
+    </script>
+</body>
+</html>

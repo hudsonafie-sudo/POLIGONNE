@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Demo - Tiles Detalhados Isométricos</title>
+<style>
+    body {
+        margin: 0;
+        background: #1a1a2e;
+        color: #fff;
+        font-family: Arial, sans-serif;
+        overflow-x: hidden;
+    }
+    h1 {
+        text-align: center;
+        margin: 20px 0 5px;
+        font-size: 22px;
+        color: #aef;
+    }
+    .subtitle {
+        text-align: center;
+        color: #888;
+        margin-bottom: 15px;
+        font-size: 13px;
+    }
+    .demos {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        padding: 10px 20px 40px;
+    }
+    .demo-card {
+        background: #111;
+        border: 1px solid #333;
+        border-radius: 10px;
+        padding: 10px;
+        text-align: center;
+    }
+    .demo-card h3 {
+        margin: 0 0 5px;
+        font-size: 14px;
+        color: #8f8;
+    }
+    .demo-card p {
+        margin: 0 0 8px;
+        font-size: 11px;
+        color: #777;
+        max-width: 420px;
+    }
+    canvas {
+        border-radius: 6px;
+        display: block;
+    }
+</style>
+</head>
+<body>
+
+<h1>Tiles Isométricos 3D com Vegetação Detalhada</h1>
+<p class="subtitle">Tiles com volume, faces laterais e grama com lâminas individuais</p>
+
+<div class="demos" id="demos"></div>
+
+<script>
+const TILE_WIDTH = 64;
+const TILE_HEIGHT = 32;
+const TILE_DEPTH = 12; // Espessura lateral do tile 3D
+const GRID = 6;
+const CW = 420;
+const CH = 320;
+
+function seededRandom(seed) {
+    let s = seed | 0;
+    if (s === 0) s = 1;
+    return function() {
+        s = (s * 16807 + 0) % 2147483647;
+        return (s - 1) / 2147483646;
+    };
+}
+
+function lerp(a, b, t) { return a + (b - a) * t; }
+function lerpColor(r1,g1,b1, r2,g2,b2, t) {
+    return [Math.round(lerp(r1,r2,t)), Math.round(lerp(g1,g2,t)), Math.round(lerp(b1,b2,t))];
+}
+
+function gridToIso(gx, gy) {
+    return {
+        x: (gx - gy) * (TILE_WIDTH / 2),
+        y: (gx + gy) * (TILE_HEIGHT / 2)
+    };
+}
+
+function worldToScreen(wx, wy, ox, oy) {
+    return { x: wx + ox, y: wy + oy };
+}
+
+// ============================================================
+// Desenha tile 3D base com faces laterais
+// ============================================================
+function draw3DTile(ctx, sx, sy, topColor, leftColor, rightColor, strokeColor, depth) {
+    const d = depth || TILE_DEPTH;
+    const hw = TILE_WIDTH / 2;
+    const hh = TILE_HEIGHT / 2;
+
+    // Face superior (losango)
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + hw, sy + hh);
+    ctx.lineTo(sx, sy + TILE_HEIGHT);
+    ctx.lineTo(sx - hw, sy + hh);
+    ctx.closePath();
+    ctx.fillStyle = topColor;
+    ctx.fill();
+    if (strokeColor) {
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+    }
+
+    // Face esquerda
+    ctx.beginPath();
+    ctx.moveTo(sx - hw, sy + hh);
+    ctx.lineTo(sx, sy + TILE_HEIGHT);
+    ctx.lineTo(sx, sy + TILE_HEIGHT + d);
+    ctx.lineTo(sx - hw, sy + hh + d);
+    ctx.closePath();
+    ctx.fillStyle = leftColor;
+    ctx.fill();
+    if (strokeColor) { ctx.strokeStyle = strokeColor; ctx.lineWidth = 0.5; ctx.stroke(); }
+
+    // Face direita
+    ctx.beginPath();
+    ctx.moveTo(sx + hw, sy + hh);
+    ctx.lineTo(sx, sy + TILE_HEIGHT);
+    ctx.lineTo(sx, sy + TILE_HEIGHT + d);
+    ctx.lineTo(sx + hw, sy + hh + d);
+    ctx.closePath();
+    ctx.fillStyle = rightColor;
+    ctx.fill();
+    if (strokeColor) { ctx.strokeStyle = strokeColor; ctx.lineWidth = 0.5; ctx.stroke(); }
+}
+
+// Clip na superfície do tile (losango)
+function clipTileTop(ctx, sx, sy) {
+    const hw = TILE_WIDTH / 2;
+    const hh = TILE_HEIGHT / 2;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + hw, sy + hh);
+    ctx.lineTo(sx, sy + TILE_HEIGHT);
+    ctx.lineTo(sx - hw, sy + hh);
+    ctx.closePath();
+    ctx.clip();
+}
+
+// ============================================================
+// ESTILO 1: Grama Exuberante (estilo referência 1)
+// Lâminas individuais densas, múltiplos tons de verde
+// ============================================================
+function style1_lushGrass(ctx, sx, sy, gx, gy) {
+    const rng = seededRandom(gx * 137 + gy * 89 + 42);
+    const isEven = (gx + gy) % 2 === 0;
+
+    // Tile 3D verde vivo
+    const topBase = isEven ? '#5a9e2f' : '#4e8f28';
+    draw3DTile(ctx, sx, sy, topBase, '#3d7a1e', '#4a8825', 'rgba(40,70,20,0.3)', TILE_DEPTH);
+
+    ctx.save();
+    clipTileTop(ctx, sx, sy);
+
+    // Textura de grama na superfície (manchas de cor)
+    const patches = 4 + Math.floor(rng() * 4);
+    for (let i = 0; i < patches; i++) {
+        const px = sx + (rng() - 0.5) * TILE_WIDTH * 0.6;
+        const py = sy + TILE_HEIGHT * 0.15 + rng() * TILE_HEIGHT * 0.7;
+        const r = 4 + rng() * 8;
+        const g = isEven ?
+            `rgba(${60+Math.floor(rng()*30)}, ${130+Math.floor(rng()*40)}, ${30+Math.floor(rng()*20)}, 0.3)` :
+            `rgba(${50+Math.floor(rng()*25)}, ${120+Math.floor(rng()*30)}, ${25+Math.floor(rng()*15)}, 0.3)`;
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(px, py, r, r * 0.5, rng() * Math.PI, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Lâminas de grama (muitas, variadas)
+    const bladeCount = 25 + Math.floor(rng() * 20);
+    for (let i = 0; i < bladeCount; i++) {
+        const bx = sx + (rng() - 0.5) * TILE_WIDTH * 0.7;
+        const by = sy + TILE_HEIGHT * 0.15 + rng() * TILE_HEIGHT * 0.75;
+
+        const height = 4 + rng() * 10;
+        const width = 1 + rng() * 2;
+        const bend = (rng() - 0.5) * 4;
+
+        // Gradiente de cor: base escura -> ponta clara
+        const shade = rng();
+        let r2, g2, b2;
+        if (shade < 0.3) {
+            // Verde escuro
+            r2 = 30 + Math.floor(rng() * 20);
+            g2 = 80 + Math.floor(rng() * 40);
+            b2 = 15 + Math.floor(rng() * 15);
+        } else if (shade < 0.7) {
+            // Verde médio
+            r2 = 50 + Math.floor(rng() * 30);
+            g2 = 120 + Math.floor(rng() * 50);
+            b2 = 20 + Math.floor(rng() * 20);
+        } else {
+            // Verde claro / amarelado
+            r2 = 80 + Math.floor(rng() * 40);
+            g2 = 150 + Math.floor(rng() * 50);
+            b2 = 25 + Math.floor(rng() * 30);
+        }
+
+        // Desenha lâmina como path curvo
+        ctx.fillStyle = `rgb(${r2}, ${g2}, ${b2})`;
+        ctx.globalAlpha = 0.6 + rng() * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(bx - width/2, by);
+        ctx.quadraticCurveTo(bx + bend * 0.5, by - height * 0.6, bx + bend, by - height);
+        ctx.quadraticCurveTo(bx + bend * 0.5 + width * 0.3, by - height * 0.6, bx + width/2, by);
+        ctx.closePath();
+        ctx.fill();
+        ctx.globalAlpha = 1;
+    }
+
+    ctx.restore();
+}
+
+// ============================================================
+// ESTILO 2: Grama Curta Aparada (mais limpo, menos caótico)
+// ============================================================
+function style2_shortGrass(ctx, sx, sy, gx, gy) {
+    const rng = seededRandom(gx * 53 + gy * 167 + 99);
+    const isEven = (gx + gy) % 2 === 0;
+
+    const topBase = isEven ? '#5fad35' : '#55a030';
+    draw3DTile(ctx, sx, sy, topBase, '#3e7f20', '#4d9028', 'rgba(30,60,15,0.3)', TILE_DEPTH);
+
+    ctx.save();
+    clipTileTop(ctx, sx, sy);
+
+    // Manchas sutis de variação
+    const patches = 3 + Math.floor(rng() * 3);
+    for (let i = 0; i < patches; i++) {
+        const px = sx + (rng() - 0.5) * TILE_WIDTH * 0.5;
+        const py = sy + TILE_HEIGHT * 0.2 + rng() * TILE_HEIGHT * 0.6;
+        ctx.fillStyle = `rgba(${70+Math.floor(rng()*30)}, ${140+Math.floor(rng()*30)}, ${30+Math.floor(rng()*15)}, 0.2)`;
+        ctx.beginPath();
+        ctx.ellipse(px, py, 6 + rng()*5, 3 + rng()*3, rng()*Math.PI, 0, Math.PI*2);
+        ctx.fill();
+    }
+
+    // Grama curta e densa
+    const bladeCount = 35 + Math.floor(rng() * 25);
+    for (let i = 0; i < bladeCount; i++) {
+        const bx = sx + (rng() - 0.5) * TILE_WIDTH * 0.7;
+        const by = sy + TILE_HEIGHT * 0.1 + rng() * TILE_HEIGHT * 0.8;
+        const height = 2 + rng() * 5;
+        const width = 0.8 + rng() * 1.5;
+        const bend = (rng() - 0.5) * 2;
+
+        const g = 90 + Math.floor(rng() * 70);
+        ctx.fillStyle = `rgba(${40+Math.floor(rng()*30)}, ${g}, ${20+Math.floor(rng()*15)}, ${0.5+rng()*0.4})`;
+        ctx.beginPath();
+        ctx.moveTo(bx - width/2, by);
+        ctx.quadraticCurveTo(bx + bend*0.4, by - height*0.6, bx + bend, by - height);
+        ctx.quadraticCurveTo(bx + bend*0.4 + width*0.2, by - height*0.6, bx + width/2, by);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+// ============================================================
+// ESTILO 3: Grama com Caminho de Pedra (referência 2)
+// ============================================================
+function style3_stonePath(ctx, sx, sy, gx, gy) {
+    const rng = seededRandom(gx * 71 + gy * 43 + 321);
+    const isEven = (gx + gy) % 2 === 0;
+
+    // Base verde com lateral terra/marrom
+    draw3DTile(ctx, sx, sy,
+        isEven ? '#5a9e2f' : '#4e8f28',
+        '#8b6b3f',  // terra na esquerda
+        '#a07848',  // terra na direita (mais clara)
+        'rgba(60,40,20,0.3)', TILE_DEPTH);
+
+    ctx.save();
+    clipTileTop(ctx, sx, sy);
+
+    const cx = sx;
+    const cy = sy + TILE_HEIGHT / 2;
+
+    // Caminho diagonal (faixa central)
+    const pathWidth = TILE_WIDTH * 0.3;
+    ctx.fillStyle = '#8a8a9a';
+    ctx.beginPath();
+    ctx.moveTo(sx - TILE_WIDTH * 0.35, sy + TILE_HEIGHT * 0.15);
+    ctx.lineTo(sx - TILE_WIDTH * 0.15, sy + TILE_HEIGHT * 0.05);
+    ctx.lineTo(sx + TILE_WIDTH * 0.35, sy + TILE_HEIGHT * 0.85);
+    ctx.lineTo(sx + TILE_WIDTH * 0.15, sy + TILE_HEIGHT * 0.95);
+    ctx.closePath();
+    ctx.fillStyle = '#7a7a8a';
+    ctx.fill();
+
+    // Pedras no caminho
+    const stoneCount = 5 + Math.floor(rng() * 4);
+    for (let i = 0; i < stoneCount; i++) {
+        const t = (i + rng() * 0.6) / stoneCount;
+        const px = lerp(sx - TILE_WIDTH * 0.25, sx + TILE_WIDTH * 0.25, t);
+        const py = lerp(sy + TILE_HEIGHT * 0.1, sy + TILE_HEIGHT * 0.9, t);
+        const offX = (rng() - 0.5) * 8;
+        const offY = (rng() - 0.5) * 3;
+        const rw = 3 + rng() * 5;
+        const rh = 2 + rng() * 3;
+        const shade = 140 + Math.floor(rng() * 50);
+        ctx.fillStyle = `rgb(${shade-10}, ${shade-5}, ${shade+10})`;
+        ctx.beginPath();
+        ctx.ellipse(px + offX, py + offY, rw, rh, rng() * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        // Borda da pedra
+        ctx.strokeStyle = `rgba(60,60,70,0.3)`;
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+    }
+
+    // Bordas brancas do caminho
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(sx - TILE_WIDTH * 0.35, sy + TILE_HEIGHT * 0.15);
+    ctx.lineTo(sx + TILE_WIDTH * 0.35, sy + TILE_HEIGHT * 0.85);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(sx - TILE_WIDTH * 0.15, sy + TILE_HEIGHT * 0.05);
+    ctx.lineTo(sx + TILE_WIDTH * 0.15, sy + TILE_HEIGHT * 0.95);
+    ctx.stroke();
+
+    // Grama nos lados do caminho
+    const grassSides = 18 + Math.floor(rng() * 12);
+    for (let i = 0; i < grassSides; i++) {
+        const side = rng() > 0.5 ? -1 : 1;
+        const bx = sx + (rng() - 0.5) * TILE_WIDTH * 0.7;
+        const by = sy + TILE_HEIGHT * 0.1 + rng() * TILE_HEIGHT * 0.8;
+
+        // Pula se está no caminho
+        const relX = (bx - sx) / TILE_WIDTH;
+        const relY = (by - sy) / TILE_HEIGHT;
+        const onPath = Math.abs(relX + 0.25 - relY * 0.5) < 0.12;
+        if (onPath) continue;
+
+        const height = 3 + rng() * 7;
+        const width = 0.8 + rng() * 1.5;
+        const bend = (rng() - 0.5) * 3;
+        const g = 90 + Math.floor(rng() * 60);
+        ctx.fillStyle = `rgba(${40+Math.floor(rng()*25)}, ${g}, ${15+Math.floor(rng()*15)}, ${0.5+rng()*0.4})`;
+        ctx.beginPath();
+        ctx.moveTo(bx - width/2, by);
+        ctx.quadraticCurveTo(bx + bend*0.5, by - height*0.6, bx + bend, by - height);
+        ctx.quadraticCurveTo(bx + bend*0.5 + width*0.2, by - height*0.6, bx + width/2, by);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Sparkle (brilho como na referência)
+    if (rng() > 0.5) {
+        const sparkX = sx - TILE_WIDTH * 0.25 + rng() * 6;
+        const sparkY = sy + TILE_HEIGHT * 0.35 + rng() * 4;
+        drawSparkle(ctx, sparkX, sparkY, 3 + rng() * 2);
+    }
+
+    ctx.restore();
+}
+
+function drawSparkle(ctx, x, y, size) {
+    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    // Cruz de 4 pontas
+    ctx.moveTo(x, y - size);
+    ctx.lineTo(x + size*0.2, y - size*0.2);
+    ctx.lineTo(x + size, y);
+    ctx.lineTo(x + size*0.2, y + size*0.2);
+    ctx.lineTo(x, y + size);
+    ctx.lineTo(x - size*0.2, y + size*0.2);
+    ctx.lineTo(x - size, y);
+    ctx.lineTo(x - size*0.2, y - size*0.2);
+    ctx.closePath();
+    ctx.fill();
+}
+
+// ============================================================
+// ESTILO 4: Terra/Dungeon com grama esparsa
+// ============================================================
+function style4_dungeon(ctx, sx, sy, gx, gy) {
+    const rng = seededRandom(gx * 97 + gy * 61 + 555);
+    const isEven = (gx + gy) % 2 === 0;
+
+    draw3DTile(ctx, sx, sy,
+        isEven ? '#4a4a3a' : '#444434',
+        '#3a3a2c',
+        '#424232',
+        'rgba(30,30,20,0.4)', TILE_DEPTH);
+
+    ctx.save();
+    clipTileTop(ctx, sx, sy);
+
+    // Textura de terra/pedra
+    const cracks = 2 + Math.floor(rng() * 3);
+    for (let i = 0; i < cracks; i++) {
+        const x1 = sx + (rng()-0.5) * TILE_WIDTH * 0.5;
+        const y1 = sy + TILE_HEIGHT * 0.2 + rng() * TILE_HEIGHT * 0.6;
+        const len = 5 + rng() * 10;
+        const angle = rng() * Math.PI;
+        ctx.strokeStyle = `rgba(60,55,40, ${0.2+rng()*0.2})`;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x1 + Math.cos(angle)*len, y1 + Math.sin(angle)*len*0.5);
+        ctx.stroke();
+    }
+
+    // Pedrinhas
+    const stones = 3 + Math.floor(rng() * 4);
+    for (let i = 0; i < stones; i++) {
+        const px = sx + (rng()-0.5) * TILE_WIDTH * 0.5;
+        const py = sy + TILE_HEIGHT * 0.2 + rng() * TILE_HEIGHT * 0.6;
+        const shade = 55 + Math.floor(rng() * 25);
+        ctx.fillStyle = `rgba(${shade}, ${shade-3}, ${shade-8}, ${0.3+rng()*0.3})`;
+        ctx.beginPath();
+        ctx.ellipse(px, py, 1.5 + rng()*2.5, 1 + rng()*1.5, rng()*Math.PI, 0, Math.PI*2);
+        ctx.fill();
+    }
+
+    // Grama esparsa (pouca)
+    const blades = 4 + Math.floor(rng() * 6);
+    for (let i = 0; i < blades; i++) {
+        const bx = sx + (rng()-0.5) * TILE_WIDTH * 0.6;
+        const by = sy + TILE_HEIGHT * 0.15 + rng() * TILE_HEIGHT * 0.7;
+        const h = 3 + rng() * 5;
+        const w = 0.7 + rng() * 1;
+        const bend = (rng()-0.5) * 2;
+        const g = 60 + Math.floor(rng() * 40);
+        ctx.fillStyle = `rgba(${35+Math.floor(rng()*20)}, ${g}, ${20+Math.floor(rng()*10)}, ${0.4+rng()*0.3})`;
+        ctx.beginPath();
+        ctx.moveTo(bx - w/2, by);
+        ctx.quadraticCurveTo(bx + bend*0.4, by - h*0.6, bx + bend, by - h);
+        ctx.quadraticCurveTo(bx + bend*0.4 + w*0.2, by - h*0.6, bx + w/2, by);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+// ============================================================
+// ESTILO 5: Grama estilizada (cores vibrantes, limpo)
+// ============================================================
+function style5_vibrantGrass(ctx, sx, sy, gx, gy) {
+    const rng = seededRandom(gx * 127 + gy * 83 + 2024);
+    const isEven = (gx + gy) % 2 === 0;
+
+    // Cores vibrantes estilizadas
+    const topColor = isEven ? '#6bc040' : '#5fb538';
+    draw3DTile(ctx, sx, sy, topColor,
+        isEven ? '#3d8820' : '#378018',
+        isEven ? '#4a9528' : '#439025',
+        'rgba(30,60,15,0.2)', TILE_DEPTH);
+
+    ctx.save();
+    clipTileTop(ctx, sx, sy);
+
+    // Padrão checkerboard sutil no topo
+    const subSize = TILE_WIDTH / 6;
+    for (let i = 0; i < 4; i++) {
+        const px = sx + (rng()-0.5) * TILE_WIDTH * 0.4;
+        const py = sy + TILE_HEIGHT * 0.2 + rng() * TILE_HEIGHT * 0.55;
+        ctx.fillStyle = `rgba(${80+Math.floor(rng()*20)}, ${170+Math.floor(rng()*30)}, ${40+Math.floor(rng()*20)}, 0.15)`;
+        ctx.beginPath();
+        ctx.ellipse(px, py, 8+rng()*4, 4+rng()*2, 0, 0, Math.PI*2);
+        ctx.fill();
+    }
+
+    // Lâminas de grama estilizadas (maiores, mais triangulares)
+    const bladeCount = 15 + Math.floor(rng() * 12);
+    for (let i = 0; i < bladeCount; i++) {
+        const bx = sx + (rng()-0.5) * TILE_WIDTH * 0.7;
+        const by = sy + TILE_HEIGHT * 0.1 + rng() * TILE_HEIGHT * 0.8;
+        const h = 5 + rng() * 9;
+        const w = 1.5 + rng() * 2.5;
+        const bend = (rng()-0.5) * 3;
+
+        const shade = rng();
+        let gr;
+        if (shade < 0.3) gr = [45, 110+Math.floor(rng()*30), 20];
+        else if (shade < 0.7) gr = [60+Math.floor(rng()*20), 145+Math.floor(rng()*35), 30];
+        else gr = [90+Math.floor(rng()*20), 175+Math.floor(rng()*30), 40+Math.floor(rng()*15)];
+
+        // Lâmina triangular com curva
+        ctx.fillStyle = `rgba(${gr[0]}, ${gr[1]}, ${gr[2]}, ${0.6+rng()*0.35})`;
+        ctx.beginPath();
+        ctx.moveTo(bx - w/2, by);
+        ctx.quadraticCurveTo(bx - w*0.1 + bend*0.3, by - h*0.5, bx + bend, by - h);
+        ctx.quadraticCurveTo(bx + w*0.3 + bend*0.3, by - h*0.5, bx + w/2, by);
+        ctx.closePath();
+        ctx.fill();
+
+        // Highlight na lâmina (brilho)
+        if (rng() > 0.6) {
+            ctx.fillStyle = `rgba(${gr[0]+30}, ${gr[1]+30}, ${gr[2]+15}, 0.3)`;
+            ctx.beginPath();
+            ctx.moveTo(bx - w*0.15, by - h*0.2);
+            ctx.quadraticCurveTo(bx + bend*0.3, by - h*0.6, bx + bend*0.8, by - h*0.9);
+            ctx.quadraticCurveTo(bx + w*0.1 + bend*0.3, by - h*0.5, bx + w*0.15, by - h*0.2);
+            ctx.closePath();
+            ctx.fill();
+        }
+    }
+
+    ctx.restore();
+}
+
+// ============================================================
+// ESTILO 6: Grama + Flores + Detalhes (campo completo)
+// ============================================================
+function style6_meadow(ctx, sx, sy, gx, gy) {
+    const rng = seededRandom(gx * 151 + gy * 73 + 888);
+    const isEven = (gx + gy) % 2 === 0;
+
+    draw3DTile(ctx, sx, sy,
+        isEven ? '#5aaa30' : '#50a028',
+        '#3d7f1e', '#4a8f25',
+        'rgba(30,55,15,0.25)', TILE_DEPTH);
+
+    ctx.save();
+    clipTileTop(ctx, sx, sy);
+
+    // Manchas de variação
+    for (let i = 0; i < 3; i++) {
+        const px = sx + (rng()-0.5) * TILE_WIDTH * 0.5;
+        const py = sy + TILE_HEIGHT * 0.2 + rng() * TILE_HEIGHT * 0.6;
+        ctx.fillStyle = `rgba(${60+Math.floor(rng()*25)}, ${130+Math.floor(rng()*40)}, ${25+Math.floor(rng()*15)}, 0.2)`;
+        ctx.beginPath();
+        ctx.ellipse(px, py, 7+rng()*5, 3+rng()*3, rng()*Math.PI, 0, Math.PI*2);
+        ctx.fill();
+    }
+
+    // Grama
+    const bladeCount = 20 + Math.floor(rng() * 15);
+    for (let i = 0; i < bladeCount; i++) {
+        const bx = sx + (rng()-0.5) * TILE_WIDTH * 0.7;
+        const by = sy + TILE_HEIGHT * 0.1 + rng() * TILE_HEIGHT * 0.8;
+        const h = 3 + rng() * 8;
+        const w = 1 + rng() * 2;
+        const bend = (rng()-0.5) * 3;
+        const g = 80 + Math.floor(rng() * 70);
+        ctx.fillStyle = `rgba(${35+Math.floor(rng()*25)}, ${g}, ${18+Math.floor(rng()*15)}, ${0.5+rng()*0.4})`;
+        ctx.beginPath();
+        ctx.moveTo(bx - w/2, by);
+        ctx.quadraticCurveTo(bx + bend*0.4, by - h*0.6, bx + bend, by - h);
+        ctx.quadraticCurveTo(bx + bend*0.4 + w*0.2, by - h*0.5, bx + w/2, by);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Flores (0-3 por tile)
+    const flowerCount = Math.floor(rng() * 3.5);
+    const flowerPalettes = [
+        [[255,220,50], [255,240,100]],   // Amarelo
+        [[255,100,120], [255,150,160]],   // Rosa
+        [[200,130,255], [220,170,255]],   // Lilás
+        [[255,255,255], [255,255,230]],   // Branco
+        [[255,150,50], [255,180,90]],     // Laranja
+    ];
+    for (let f = 0; f < flowerCount; f++) {
+        const fx = sx + (rng()-0.5) * TILE_WIDTH * 0.5;
+        const fy = sy + TILE_HEIGHT * 0.25 + rng() * TILE_HEIGHT * 0.5;
+        const palette = flowerPalettes[Math.floor(rng() * flowerPalettes.length)];
+        const size = 1.5 + rng() * 2;
+
+        // Caule
+        ctx.strokeStyle = `rgba(40, 90, 25, 0.5)`;
+        ctx.lineWidth = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(fx, fy + 2);
+        ctx.lineTo(fx, fy - 1);
+        ctx.stroke();
+
+        // Pétalas (4-5 círculos pequenos)
+        const petals = 4 + Math.floor(rng() * 2);
+        const [pr, pg, pb] = palette[0];
+        for (let p = 0; p < petals; p++) {
+            const angle = (p / petals) * Math.PI * 2 + rng() * 0.3;
+            const px = fx + Math.cos(angle) * size * 0.6;
+            const py = fy + Math.sin(angle) * size * 0.3;
+            ctx.fillStyle = `rgba(${pr}, ${pg}, ${pb}, ${0.6+rng()*0.3})`;
+            ctx.beginPath();
+            ctx.arc(px, py, size * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        // Centro
+        ctx.fillStyle = `rgba(${palette[1][0]}, ${palette[1][1]}, ${palette[1][2]}, 0.8)`;
+        ctx.beginPath();
+        ctx.arc(fx, fy, size * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+// ============================================================
+// ESTILO 7: Areia/Deserto
+// ============================================================
+function style7_sand(ctx, sx, sy, gx, gy) {
+    const rng = seededRandom(gx * 109 + gy * 57 + 1337);
+    const isEven = (gx + gy) % 2 === 0;
+
+    draw3DTile(ctx, sx, sy,
+        isEven ? '#c4a44a' : '#b89840',
+        '#9a7830', '#a88438',
+        'rgba(80,60,20,0.3)', TILE_DEPTH);
+
+    ctx.save();
+    clipTileTop(ctx, sx, sy);
+
+    // Ondulações na areia
+    const waves = 2 + Math.floor(rng() * 2);
+    for (let w = 0; w < waves; w++) {
+        const wy = sy + TILE_HEIGHT * (0.25 + w * 0.25) + (rng()-0.5) * 4;
+        ctx.strokeStyle = `rgba(${160+Math.floor(rng()*30)}, ${130+Math.floor(rng()*25)}, ${60+Math.floor(rng()*20)}, 0.2)`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(sx - TILE_WIDTH * 0.35, wy);
+        ctx.quadraticCurveTo(sx, wy + (rng()-0.5)*3, sx + TILE_WIDTH * 0.35, wy + (rng()-0.5)*2);
+        ctx.stroke();
+    }
+
+    // Grãos de areia / pedrinhas
+    const grains = 6 + Math.floor(rng() * 6);
+    for (let i = 0; i < grains; i++) {
+        const px = sx + (rng()-0.5) * TILE_WIDTH * 0.55;
+        const py = sy + TILE_HEIGHT * 0.15 + rng() * TILE_HEIGHT * 0.7;
+        const shade = 160 + Math.floor(rng() * 40);
+        ctx.fillStyle = `rgba(${shade}, ${shade-15}, ${shade-40}, ${0.2+rng()*0.3})`;
+        ctx.beginPath();
+        ctx.arc(px, py, 0.5 + rng() * 1, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Tufos de grama seca esparsos
+    if (rng() > 0.5) {
+        const bx = sx + (rng()-0.5) * TILE_WIDTH * 0.3;
+        const by = sy + TILE_HEIGHT * 0.3 + rng() * TILE_HEIGHT * 0.4;
+        for (let b = 0; b < 3; b++) {
+            const h = 3 + rng() * 4;
+            const angle = -Math.PI/2 + (rng()-0.5) * 0.8;
+            ctx.strokeStyle = `rgba(${140+Math.floor(rng()*30)}, ${120+Math.floor(rng()*20)}, ${50+Math.floor(rng()*20)}, ${0.4+rng()*0.3})`;
+            ctx.lineWidth = 0.7;
+            ctx.beginPath();
+            ctx.moveTo(bx + b*2, by);
+            ctx.lineTo(bx + b*2 + Math.cos(angle)*h, by + Math.sin(angle)*h);
+            ctx.stroke();
+        }
+    }
+
+    ctx.restore();
+}
+
+// ============================================================
+// ESTILO 8: Água/Lago
+// ============================================================
+function style8_water(ctx, sx, sy, gx, gy) {
+    const rng = seededRandom(gx * 83 + gy * 131 + 404);
+    const isEven = (gx + gy) % 2 === 0;
+
+    draw3DTile(ctx, sx, sy,
+        isEven ? '#2878a8' : '#2570a0',
+        '#1a5580', '#1e6090',
+        'rgba(10,40,60,0.3)', TILE_DEPTH);
+
+    ctx.save();
+    clipTileTop(ctx, sx, sy);
+
+    // Reflexos na água
+    const reflections = 3 + Math.floor(rng() * 3);
+    for (let i = 0; i < reflections; i++) {
+        const rx = sx + (rng()-0.5) * TILE_WIDTH * 0.5;
+        const ry = sy + TILE_HEIGHT * 0.2 + rng() * TILE_HEIGHT * 0.6;
+        const rw = 5 + rng() * 12;
+        ctx.strokeStyle = `rgba(${120+Math.floor(rng()*60)}, ${190+Math.floor(rng()*40)}, ${230+Math.floor(rng()*25)}, ${0.15+rng()*0.15})`;
+        ctx.lineWidth = 0.6 + rng() * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(rx - rw/2, ry);
+        ctx.quadraticCurveTo(rx, ry - 1 - rng(), rx + rw/2, ry + (rng()-0.5)*1.5);
+        ctx.stroke();
+    }
+
+    // Brilhos
+    if (rng() > 0.4) {
+        const sparkX = sx + (rng()-0.5) * TILE_WIDTH * 0.3;
+        const sparkY = sy + TILE_HEIGHT * 0.3 + rng() * TILE_HEIGHT * 0.4;
+        drawSparkle(ctx, sparkX, sparkY, 2 + rng() * 1.5);
+    }
+
+    ctx.restore();
+}
+
+// ============================================================
+// Definição dos demos
+// ============================================================
+const styles = [
+    {
+        name: "Grama Exuberante",
+        desc: "Lâminas individuais densas, múltiplos tons de verde, faces laterais verdes — estilo referência 1",
+        fn: style1_lushGrass
+    },
+    {
+        name: "Grama Curta Aparada",
+        desc: "Grama mais curta e uniforme — visual limpo mas com detalhe",
+        fn: style2_shortGrass
+    },
+    {
+        name: "Caminho de Pedra",
+        desc: "Grama + caminho com pedras + brilhos — estilo referência 2 (tile especial)",
+        fn: style3_stonePath
+    },
+    {
+        name: "Terra/Dungeon",
+        desc: "Chão de terra com rachaduras, pedrinhas e grama esparsa — estilo masmorra",
+        fn: style4_dungeon
+    },
+    {
+        name: "Grama Vibrante",
+        desc: "Cores vibrantes, lâminas estilizadas com highlights — estilo cartoon RPG",
+        fn: style5_vibrantGrass
+    },
+    {
+        name: "Prado Florido",
+        desc: "Grama densa + flores coloridas com pétalas — estilo campo aberto",
+        fn: style6_meadow
+    },
+    {
+        name: "Areia/Deserto",
+        desc: "Tile de areia com ondulações, grãos e grama seca — bioma deserto",
+        fn: style7_sand
+    },
+    {
+        name: "Água",
+        desc: "Tile de água com reflexos e brilhos — para lagos ou rios",
+        fn: style8_water
+    }
+];
+
+// Render all demos
+const container = document.getElementById('demos');
+
+styles.forEach((style, idx) => {
+    const card = document.createElement('div');
+    card.className = 'demo-card';
+    card.innerHTML = `<h3>${idx + 1}. ${style.name}</h3><p>${style.desc}</p>`;
+
+    const cvs = document.createElement('canvas');
+    cvs.width = CW;
+    cvs.height = CH;
+    card.appendChild(cvs);
+    container.appendChild(card);
+
+    const ctx = cvs.getContext('2d');
+
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, CW, CH);
+
+    const ox = CW / 2;
+    const oy = 25;
+
+    // Draw tiles back-to-front for proper 3D overlap
+    for (let y = 0; y < GRID; y++) {
+        for (let x = 0; x < GRID; x++) {
+            const iso = gridToIso(x, y);
+            const screen = worldToScreen(iso.x, iso.y, ox, oy);
+            style.fn(ctx, screen.x, screen.y, x, y);
+        }
+    }
+
+    // Draw pawns
+    function drawDemoPawn(gx, gy, color, label) {
+        const pIso = gridToIso(gx + 0.5, gy + 0.5);
+        const p = worldToScreen(pIso.x, pIso.y, ox, oy);
+
+        // Sombra
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y - 2, 11, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Corpo
+        const grad = ctx.createLinearGradient(p.x, p.y - 30, p.x, p.y);
+        grad.addColorStop(0, color);
+        grad.addColorStop(1, 'rgba(0,0,0,0.3)');
+
+        // Pernas
+        ctx.fillStyle = color;
+        ctx.fillRect(p.x - 6, p.y - 16, 12, 14);
+
+        // Cabeça
+        ctx.beginPath();
+        ctx.arc(p.x, p.y - 22, 9, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Olhos
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(p.x - 3, p.y - 23, 2, 0, Math.PI * 2);
+        ctx.arc(p.x + 3, p.y - 23, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#111';
+        ctx.beginPath();
+        ctx.arc(p.x - 2.5, p.y - 23, 1, 0, Math.PI * 2);
+        ctx.arc(p.x + 3.5, p.y - 23, 1, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    drawDemoPawn(3, 3, '#4488ff', 'P');
+    drawDemoPawn(1, 2, '#ff4444', 'E');
+});
+</script>
+</body>
+</html>

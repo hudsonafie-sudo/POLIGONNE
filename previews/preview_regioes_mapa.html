@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Preview - Regiões do Vale de Betta (Mapa Real)</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #111; color: #eee; font-family: 'Segoe UI', sans-serif; }
+.top-bar { background: #1a1a2e; padding: 8px 16px; display: flex; align-items: center; gap: 16px; border-bottom: 1px solid #333; position: sticky; top: 0; z-index: 100; flex-wrap: wrap; }
+.top-bar h1 { color: #ffd700; font-size: 16px; white-space: nowrap; }
+.top-bar label { font-size: 12px; color: #aaa; cursor: pointer; }
+.top-bar input[type=checkbox] { margin-right: 4px; }
+.top-bar select { background: #222; color: #eee; border: 1px solid #555; padding: 2px 6px; font-size: 12px; }
+.container { display: flex; height: calc(100vh - 44px); }
+.map-wrap { flex: 1; overflow: auto; position: relative; cursor: crosshair; }
+canvas { display: block; image-rendering: pixelated; }
+.sidebar { width: 360px; background: #16213e; overflow-y: auto; padding: 12px; border-left: 1px solid #333; }
+.sidebar h3 { color: #ffd700; font-size: 13px; margin: 10px 0 4px 0; }
+.sidebar h3:first-child { margin-top: 0; }
+.region-box { background: #0f3460; border-radius: 6px; padding: 8px; margin-bottom: 6px; border-left: 4px solid #555; transition: background 0.15s; }
+.region-box.active { border-left-color: #ffd700; background: #1a4a80; }
+.region-box .rname { font-weight: bold; font-size: 13px; }
+.region-box .rdesc { font-size: 11px; color: #aaa; margin-top: 2px; }
+.mob-tag { display: inline-block; background: #ff6b6b22; color: #ff6b6b; padding: 0 5px; border-radius: 8px; font-size: 10px; margin: 1px; }
+.prof-tag { display: inline-block; background: #4ecdc422; color: #4ecdc4; padding: 0 5px; border-radius: 8px; font-size: 10px; margin: 1px; }
+.hover-bar { position: fixed; bottom: 0; left: 0; right: 360px; background: #1a1a2eee; padding: 6px 16px; font-size: 12px; border-top: 1px solid #333; z-index: 100; }
+.hover-bar span { margin-right: 16px; }
+.hover-bar .hname { color: #ffd700; font-weight: bold; }
+.hover-bar .hmobs { color: #ff6b6b; }
+.hover-bar .hcoord { color: #888; }
+.tier-badge { display: inline-block; padding: 0 6px; border-radius: 10px; font-size: 10px; font-weight: bold; margin-left: 4px; }
+.tier1 { background: #2d6a2d44; color: #7cb342; }
+.tier2 { background: #c4421444; color: #ff6b6b; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+    <h1>Vale de Betta — Regiões Orgânicas</h1>
+    <label><input type="checkbox" id="chkRegions" checked onchange="render()"> Regiões</label>
+    <label><input type="checkbox" id="chkLabels" checked onchange="render()"> Nomes</label>
+    <label><input type="checkbox" id="chkMobs" onchange="render()"> Mobs</label>
+    <label><input type="checkbox" id="chkBounds" checked onchange="render()"> Limites</label>
+    <label><input type="checkbox" id="chkTransport" checked onchange="render()"> Transportes</label>
+    <label>Zoom:
+        <select id="selZoom" onchange="setZoom(this.value)">
+            <option value="1">1x (600px)</option>
+            <option value="2" selected>2x (1200px)</option>
+            <option value="3">3x (1800px)</option>
+        </select>
+    </label>
+</div>
+
+<div class="container">
+<div class="map-wrap" id="mapWrap">
+    <canvas id="mapCanvas"></canvas>
+    <canvas id="overlayCanvas" style="position:absolute;top:0;left:0;pointer-events:none;"></canvas>
+</div>
+<div class="sidebar" id="sidebar"></div>
+</div>
+
+<div class="hover-bar" id="hoverBar">
+    <span class="hcoord">Passe o mouse no mapa</span>
+</div>
+
+<!-- Load actual map generation code -->
+<script src="../mapas/mundo/cidade/cidade_delta.js"></script>
+<script src="../mapas/mundo/cidade/cidade.js"></script>
+
+<script>
+// =============================================
+// PREVIEW agora usa as funções exportadas pelo cidade.js
+// (getRegionId, REGION_META, TRANSPORT_POINTS são globais)
+// =============================================
+
+var CX = 300, CY = 300;
+
+// Wrapper local para cityRadius (usa _getCityRadius do cidade.js)
+function cityRadius(angle) { return _getCityRadius(angle); }
+
+// =============================================
+// REGION DATA (versão visual para o preview — cores, descrições, etc.)
+// =============================================
+
+var REGION_DATA = {
+    praca: { name: 'Praça da Fonte', color: [255,215,0], border: '#ffd700', tier: 0, lvl: '—',
+        mobs: [], profs: [], desc: 'Zona segura. Sem monstros. Ponto de spawn.' },
+    dist_mercantil: { name: 'Distrito Mercantil', color: [230,200,51], border: '#e6c833', tier: 1, lvl: '1-3',
+        mobs: ['Rato', 'Barata'], profs: ['Alfaiate', 'Joalheiro', 'Mercado', 'Banco'],
+        desc: 'Norte. Comércio, mercado, banco. 2 sub-regiões.' },
+    dist_artesaos: { name: 'Distrito dos Artesãos', color: [230,126,34], border: '#e67e22', tier: 1, lvl: '1-3',
+        mobs: ['Rato', 'Morcego'], profs: ['Ferreiro', 'Coureiro', 'Padeiro'],
+        desc: 'Oeste. Oficinas e mesas de profissão.' },
+    dist_verdejante: { name: 'Distrito Verdejante', color: [46,204,113], border: '#2ecc71', tier: 1, lvl: '1-3',
+        mobs: ['Barata', 'Morcego'], profs: ['Horta tutorial', 'Árvores tutorial'],
+        desc: 'Leste. Jardins, hortas de introdução.' },
+    dist_residencial: { name: 'Distrito Residencial', color: [52,152,219], border: '#3498db', tier: 1, lvl: '1-3',
+        mobs: ['Rato', 'Barata'], profs: ['Rochas tutorial'],
+        desc: 'Sul. Casas, NPCs de tutorial.' },
+    arredores: { name: 'Arredores da Muralha', color: [155,89,182], border: '#9b59b6', tier: 1, lvl: '2-5',
+        mobs: ['Cogumelo', 'Sapo', 'Planta'], profs: ['Pontos esparsos de coleta'],
+        desc: 'Cinturão expandido. Transição cidade→campo.' },
+    floresta_uivante: { name: 'Floresta Uivante', color: [93,138,62], border: '#5d8a3e', tier: 1, lvl: '4-8',
+        mobs: ['Lobo', 'Javali', 'Cobra'], profs: ['Lenhador', 'Bancada Carpinteiro', 'Coletor', 'Fazendeiro'],
+        desc: 'Norte/Noroeste. Floresta com predadores.' },
+    vale_ossos: { name: 'Vale dos Ossos', color: [107,76,48], border: '#6b4c30', tier: 1, lvl: '4-8',
+        mobs: ['Goblin', 'Esqueleto', 'Aranha'], profs: ['Mineiro', 'Forja/Bigorna', 'Pescador T1', 'Coletor'],
+        desc: 'Sul/Sudeste. Criaturas sombrias. Minas.' },
+    toca_urso: { name: 'Toca do Urso', color: [139,69,0], border: '#8B4500', tier: 2, lvl: '8-14',
+        mobs: ['Urso'], profs: ['Coletor (peles)', 'Lenhador (árvores antigas)'],
+        desc: 'Norte. Cavernas e floresta densa.' },
+    ninho_harpia: { name: 'Ninho das Harpias', color: [126,87,194], border: '#7E57C2', tier: 2, lvl: '8-14',
+        mobs: ['Harpia'], profs: ['Coletor (penas)', 'Mineiro (gemas)'],
+        desc: 'Nordeste. Penhascos elevados.' },
+    gruta_golem: { name: 'Gruta do Golem', color: [120,144,156], border: '#78909C', tier: 2, lvl: '10-16',
+        mobs: ['Golem'], profs: ['Mineiro (minério raro)', 'Forja avançada'],
+        desc: 'Leste. Formações rochosas.' },
+    pantano_lagarto: { name: 'Pântano dos Lagartos', color: [76,175,80], border: '#4CAF50', tier: 2, lvl: '10-16',
+        mobs: ['Lagarto'], profs: ['Pescador T2', 'Coletor (musgo)'],
+        desc: 'Sudeste. Pântano úmido.' },
+    ruinas_troll: { name: 'Ruínas do Troll', color: [93,78,55], border: '#5D4E37', tier: 2, lvl: '10-16',
+        mobs: ['Troll'], profs: ['Coletor (fungos)', 'Padeiro (raros)'],
+        desc: 'Sudoeste. Ruínas antigas.' },
+    floresta_ogro: { name: 'Floresta do Ogro', color: [191,54,12], border: '#BF360C', tier: 2, lvl: '12-18',
+        mobs: ['Ogro'], profs: ['Lenhador (madeira rara)', 'Fazendeiro (selvagem)'],
+        desc: 'Noroeste. Floresta escura e perigosa.' },
+};
+
+// =============================================
+// TERRAIN COLORS
+// =============================================
+var TERRAIN_COLORS = {
+    grass: [74,122,46], sand: [194,178,128], dirt: [139,115,85],
+    stone: [128,128,128], brick: [139,107,74], water: [34,102,204],
+    bridge: [139,115,85], wood: [107,91,58], farmland: [123,139,58],
+    puddle: [51,119,187], default: [51,51,51]
+};
+var VISUAL_COLORS = {
+    tree: [45,90,30], rock: [102,102,102], house: [122,90,58],
+    bush: [58,106,42], flower: [204,102,170], lamp: [221,204,68],
+    well: [85,119,170], sign: [170,136,68], dungeon_entrance: [68,34,68],
+    grass: [90,138,62]
+};
+
+// =============================================
+// MAP RENDERING
+// =============================================
+var mapCanvas = document.getElementById('mapCanvas');
+var mapCtx = mapCanvas.getContext('2d');
+var overlayCanvas = document.getElementById('overlayCanvas');
+var overlayCtx = overlayCanvas.getContext('2d');
+var zoom = 2;
+var mapData = null;
+var gridSize = 600;
+
+// Pre-compute region map (600x600 → region id per tile)
+var regionMap = null;
+
+function buildMapLookup() {
+    mapData = {};
+    if (typeof MAPA_CIDADE === 'undefined') return;
+    var cells = MAPA_CIDADE.cells;
+    for (var i = 0; i < cells.length; i++) {
+        var c = cells[i];
+        mapData[c.x + ',' + c.y] = c;
+    }
+}
+
+function buildRegionMap() {
+    console.time('regionMap');
+    regionMap = new Array(gridSize * gridSize);
+    for (var y = 0; y < gridSize; y++) {
+        for (var x = 0; x < gridSize; x++) {
+            regionMap[y * gridSize + x] = getRegionId(x, y);
+        }
+    }
+    console.timeEnd('regionMap');
+}
+
+function getCellRGB(cell) {
+    if (!cell) return [26,26,26];
+    if (cell.obstacle === 'blocker' && cell.terrainType === 'brick') return [85,68,51];
+    if (cell.visualType && VISUAL_COLORS[cell.visualType]) return VISUAL_COLORS[cell.visualType];
+    if (cell.obstacle === 'blocker' && cell.visualType === 'rock') return [102,102,102];
+    if (cell.obstacle === 'blocker' && cell.visualType === 'tree') return [45,90,30];
+    return TERRAIN_COLORS[cell.terrainType] || TERRAIN_COLORS.default;
+}
+
+function renderBaseMap() {
+    var w = gridSize * zoom;
+    mapCanvas.width = w;
+    mapCanvas.height = w;
+    overlayCanvas.width = w;
+    overlayCanvas.height = w;
+    overlayCanvas.style.width = w + 'px';
+    overlayCanvas.style.height = w + 'px';
+
+    var imgData = mapCtx.createImageData(w, w);
+    var data = imgData.data;
+
+    for (var gy = 0; gy < gridSize; gy++) {
+        for (var gx = 0; gx < gridSize; gx++) {
+            var cell = mapData ? mapData[gx + ',' + gy] : null;
+            var rgb = getCellRGB(cell);
+
+            for (var py = 0; py < zoom; py++) {
+                for (var px = 0; px < zoom; px++) {
+                    var idx = ((gy * zoom + py) * w + (gx * zoom + px)) * 4;
+                    data[idx] = rgb[0];
+                    data[idx+1] = rgb[1];
+                    data[idx+2] = rgb[2];
+                    data[idx+3] = 255;
+                }
+            }
+        }
+    }
+    mapCtx.putImageData(imgData, 0, 0);
+}
+
+function renderOverlay() {
+    var w = gridSize * zoom;
+    overlayCtx.clearRect(0, 0, w, w);
+
+    var showRegions = document.getElementById('chkRegions').checked;
+    var showLabels = document.getElementById('chkLabels').checked;
+    var showMobs = document.getElementById('chkMobs').checked;
+    var showBounds = document.getElementById('chkBounds').checked;
+
+    if (showRegions && regionMap) {
+        // Renderiza overlay colorido por região — pixel a pixel no ImageData
+        var imgData = overlayCtx.createImageData(w, w);
+        var data = imgData.data;
+
+        for (var gy = 0; gy < gridSize; gy++) {
+            for (var gx = 0; gx < gridSize; gx++) {
+                var rid = regionMap[gy * gridSize + gx];
+                if (!rid) continue;
+                var reg = REGION_DATA[rid];
+                if (!reg) continue;
+                var c = reg.color;
+                var alpha = (rid === 'praca') ? 140 : 80;
+
+                for (var py = 0; py < zoom; py++) {
+                    for (var px = 0; px < zoom; px++) {
+                        var idx = ((gy * zoom + py) * w + (gx * zoom + px)) * 4;
+                        data[idx] = c[0];
+                        data[idx+1] = c[1];
+                        data[idx+2] = c[2];
+                        data[idx+3] = alpha;
+                    }
+                }
+            }
+        }
+        overlayCtx.putImageData(imgData, 0, 0);
+    }
+
+    if (showBounds && regionMap) {
+        // Desenha bordas onde a região muda entre tiles adjacentes
+        overlayCtx.strokeStyle = '#ffffffaa';
+        overlayCtx.lineWidth = 1;
+
+        // Renderiza bordas como pixels brancos semitransparentes onde muda a região
+        var borderImg = overlayCtx.createImageData(w, w);
+        var bd = borderImg.data;
+
+        for (var gy = 1; gy < gridSize - 1; gy++) {
+            for (var gx = 1; gx < gridSize - 1; gx++) {
+                var rid = regionMap[gy * gridSize + gx];
+                if (!rid) continue;
+                // Checa vizinhos
+                var rR = regionMap[gy * gridSize + gx + 1];
+                var rD = regionMap[(gy + 1) * gridSize + gx];
+                if ((rR && rR !== rid) || (rD && rD !== rid)) {
+                    // Borda!
+                    var reg = REGION_DATA[rid];
+                    // Cor da borda baseada na região
+                    var bc = reg ? reg.color : [255,255,255];
+                    for (var py = 0; py < zoom; py++) {
+                        for (var px = 0; px < zoom; px++) {
+                            var idx = ((gy * zoom + py) * w + (gx * zoom + px)) * 4;
+                            bd[idx] = 255;
+                            bd[idx+1] = 255;
+                            bd[idx+2] = 255;
+                            bd[idx+3] = 160;
+                        }
+                    }
+                }
+            }
+        }
+        overlayCtx.putImageData(borderImg, 0, 0);
+
+        // Borda do mundo (a única circular suave)
+        var cp = { x: CX * zoom, y: CY * zoom };
+        overlayCtx.beginPath();
+        overlayCtx.arc(cp.x, cp.y, 270 * zoom, 0, Math.PI * 2);
+        overlayCtx.strokeStyle = '#e74c3caa';
+        overlayCtx.lineWidth = 2;
+        overlayCtx.setLineDash([12, 6]);
+        overlayCtx.stroke();
+        overlayCtx.setLineDash([]);
+
+        // Portões
+        var gateAngles = [-Math.PI * 0.52, Math.PI * 0.47, -0.05, Math.PI + 0.30];
+        for (var g = 0; g < gateAngles.length; g++) {
+            var ga = gateAngles[g];
+            var gr = cityRadius(ga);
+            overlayCtx.beginPath();
+            overlayCtx.arc(cp.x + Math.cos(ga) * gr * zoom, cp.y + Math.sin(ga) * gr * zoom, 5, 0, Math.PI * 2);
+            overlayCtx.fillStyle = '#ffd700';
+            overlayCtx.fill();
+        }
+    }
+
+    if (showLabels) {
+        var cp = { x: CX * zoom, y: CY * zoom };
+        overlayCtx.textAlign = 'center';
+        overlayCtx.textBaseline = 'middle';
+
+        // Praça
+        drawLabel(cp.x, cp.y - 4*zoom, 'Praça da Fonte', '#fff', 'bold ' + (10*zoom) + 'px Segoe UI');
+        drawLabel(cp.x, cp.y + 10*zoom, 'ZONA SEGURA', '#ffd700', (7*zoom) + 'px Segoe UI');
+
+        // Distritos
+        var dInfo = [
+            { a: -1.6, r: 55, name: 'Mercantil', sub: 'Mercado / Banco', c: '#e6c833' },
+            { a: 3.2, r: 55, name: 'Artesãos', sub: 'Mesas Profissão', c: '#e67e22' },
+            { a: 0.0, r: 55, name: 'Verdejante', sub: 'Jardins', c: '#2ecc71' },
+            { a: 1.7, r: 55, name: 'Residencial', sub: 'Tutorial / NPCs', c: '#3498db' },
+        ];
+        for (var d = 0; d < dInfo.length; d++) {
+            var di = dInfo[d];
+            var lx = cp.x + Math.cos(di.a) * di.r * zoom;
+            var ly = cp.y + Math.sin(di.a) * di.r * zoom;
+            drawLabel(lx, ly - 5*zoom, di.name, di.c, 'bold ' + (8*zoom) + 'px Segoe UI');
+            drawLabel(lx, ly + 7*zoom, di.sub, '#aaa', (6*zoom) + 'px Segoe UI');
+        }
+
+        // Arredores
+        var arrLabels = [
+            { a: -1.57, r: 118 }, { a: 0, r: 118 }, { a: 1.57, r: 118 }, { a: 3.14, r: 118 }
+        ];
+        for (var i = 0; i < arrLabels.length; i++) {
+            var al = arrLabels[i];
+            var lx = cp.x + Math.cos(al.a) * al.r * zoom;
+            var ly = cp.y + Math.sin(al.a) * al.r * zoom;
+            drawLabel(lx, ly, 'Arredores', '#cba6e8', 'bold ' + (7*zoom) + 'px Segoe UI');
+            drawLabel(lx, ly + 9*zoom, 'Cogumelo•Sapo•Planta', '#ff9999', (5*zoom) + 'px Segoe UI');
+        }
+
+        // Zonas médias
+        drawLabel(cp.x - 50*zoom, cp.y - 155*zoom, 'Floresta Uivante', '#aaddaa', 'bold ' + (10*zoom) + 'px Segoe UI');
+        drawLabel(cp.x - 50*zoom, cp.y - 143*zoom, 'Lobo • Javali • Cobra', '#ff9999', (7*zoom) + 'px Segoe UI');
+        drawLabel(cp.x - 50*zoom, cp.y - 133*zoom, 'Nv 4-8 | TIER 1', '#ffd700', (6*zoom) + 'px Segoe UI');
+
+        drawLabel(cp.x + 40*zoom, cp.y + 155*zoom, 'Vale dos Ossos', '#ddb88a', 'bold ' + (10*zoom) + 'px Segoe UI');
+        drawLabel(cp.x + 40*zoom, cp.y + 167*zoom, 'Goblin • Esqueleto • Aranha', '#ff9999', (7*zoom) + 'px Segoe UI');
+        drawLabel(cp.x + 40*zoom, cp.y + 177*zoom, 'Nv 4-8 | TIER 1', '#ffd700', (6*zoom) + 'px Segoe UI');
+
+        // Zonas T2 externas
+        var t2Labels = [
+            { a: -1.575, r: 230, name: 'Toca do Urso', mob: 'Urso', lvl: '8-14', c: '#ffaa44' },
+            { a: -0.525, r: 230, name: 'Ninho Harpias', mob: 'Harpia', lvl: '8-14', c: '#b39ddb' },
+            { a: 0.525, r: 230, name: 'Gruta Golem', mob: 'Golem', lvl: '10-16', c: '#b0bec5' },
+            { a: 1.575, r: 230, name: 'Pântano Lagartos', mob: 'Lagarto', lvl: '10-16', c: '#a5d6a7' },
+            { a: 2.55, r: 230, name: 'Ruínas Troll', mob: 'Troll', lvl: '10-16', c: '#bcaaa4' },
+            { a: -2.55, r: 230, name: 'Floresta Ogro', mob: 'Ogro', lvl: '12-18', c: '#ff8a65' },
+        ];
+        for (var o = 0; o < t2Labels.length; o++) {
+            var ol = t2Labels[o];
+            var lx = cp.x + Math.cos(ol.a) * ol.r * zoom;
+            var ly = cp.y + Math.sin(ol.a) * ol.r * zoom;
+            drawLabel(lx, ly - 8*zoom, ol.name, ol.c, 'bold ' + (8*zoom) + 'px Segoe UI');
+            drawLabel(lx, ly + 2*zoom, ol.mob + ' | Nv ' + ol.lvl, '#ff6b6b', (6*zoom) + 'px Segoe UI');
+            drawLabel(lx, ly + 11*zoom, 'TIER 2', '#ff6b6b', 'bold ' + (6*zoom) + 'px Segoe UI');
+        }
+    }
+
+    // ========== TRANSPORTES (balsas + minas) ==========
+    var showTransport = document.getElementById('chkTransport').checked;
+    if (showTransport) {
+        var cp = { x: CX * zoom, y: CY * zoom };
+
+        // Usa TRANSPORT_POINTS exportado pelo cidade.js
+        var TRANSPORTS = TRANSPORT_POINTS;
+
+        // Desenha conexões (linhas tracejadas)
+        overlayCtx.setLineDash([8, 6]);
+        overlayCtx.lineWidth = 3;
+
+        // Conexão balsas (azul, seguindo o rio)
+        overlayCtx.strokeStyle = '#44aaff';
+        overlayCtx.beginPath();
+        for (var i = 0; i < TRANSPORTS.balsas.length; i++) {
+            var b = TRANSPORTS.balsas[i];
+            if (i === 0) overlayCtx.moveTo(b.x * zoom, b.y * zoom);
+            else overlayCtx.lineTo(b.x * zoom, b.y * zoom);
+        }
+        overlayCtx.stroke();
+
+        // Conexão minas (marrom, linha reta = túnel subterrâneo)
+        overlayCtx.strokeStyle = '#aa7744';
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(TRANSPORTS.minas[0].x * zoom, TRANSPORTS.minas[0].y * zoom);
+        overlayCtx.lineTo(TRANSPORTS.minas[1].x * zoom, TRANSPORTS.minas[1].y * zoom);
+        overlayCtx.stroke();
+        overlayCtx.setLineDash([]);
+
+        // Conexão carroças (verde-dourado, do hub central para cada destino)
+        overlayCtx.strokeStyle = '#ccaa44';
+        overlayCtx.setLineDash([6, 4]);
+        overlayCtx.lineWidth = 2;
+        var hub = TRANSPORTS.carrocas[0];
+        for (var i = 1; i < TRANSPORTS.carrocas.length; i++) {
+            var c = TRANSPORTS.carrocas[i];
+            overlayCtx.beginPath();
+            overlayCtx.moveTo(hub.x * zoom, hub.y * zoom);
+            overlayCtx.lineTo(c.x * zoom, c.y * zoom);
+            overlayCtx.stroke();
+        }
+        overlayCtx.setLineDash([]);
+
+        // Desenha ícones — balsas
+        function drawTransportPt(pt, icon, bgColor, borderColor) {
+            var px = pt.x * zoom, py = pt.y * zoom;
+            overlayCtx.beginPath();
+            overlayCtx.arc(px, py, 8 * zoom, 0, Math.PI * 2);
+            overlayCtx.fillStyle = bgColor;
+            overlayCtx.fill();
+            overlayCtx.strokeStyle = borderColor;
+            overlayCtx.lineWidth = 2;
+            overlayCtx.stroke();
+            overlayCtx.font = (10 * zoom) + 'px Segoe UI';
+            overlayCtx.textAlign = 'center';
+            overlayCtx.textBaseline = 'middle';
+            overlayCtx.fillText(icon, px, py);
+            drawLabel(px, py - 12 * zoom, pt.name, borderColor, 'bold ' + (7*zoom) + 'px Segoe UI');
+            var regionLabel = pt.region || (pt.destIds ? pt.destIds.join(', ') : '');
+            drawLabel(px, py + 12 * zoom, regionLabel, '#aaa', (5*zoom) + 'px Segoe UI');
+        }
+
+        for (var i = 0; i < TRANSPORTS.balsas.length; i++)
+            drawTransportPt(TRANSPORTS.balsas[i], '⛵', '#1155aa', '#44aaff');
+        for (var i = 0; i < TRANSPORTS.minas.length; i++)
+            drawTransportPt(TRANSPORTS.minas[i], '⛏️', '#664422', '#aa7744');
+        for (var i = 0; i < TRANSPORTS.carrocas.length; i++) {
+            var c = TRANSPORTS.carrocas[i];
+            drawTransportPt(c, c.isHub ? '🏠' : '🐴', '#443300', '#ccaa44');
+        }
+
+        // Legenda
+        drawLabel(cp.x, cp.y - 284 * zoom, '⛵ Balsas — viagem pelo rio', '#44aaff', (6*zoom) + 'px Segoe UI');
+        drawLabel(cp.x, cp.y - 276 * zoom, '⛏️ Minas — túnel subterrâneo', '#aa7744', (6*zoom) + 'px Segoe UI');
+        drawLabel(cp.x, cp.y - 268 * zoom, '🐴 Carroças — estradas rápidas', '#ccaa44', (6*zoom) + 'px Segoe UI');
+    }
+
+    if (showMobs) {
+        // Ícones de mob espalhados
+        var cp = { x: CX * zoom, y: CY * zoom };
+        var mobSymbols = {
+            'Rato':'🐀','Barata':'🪳','Morcego':'🦇','Cogumelo':'🍄','Sapo':'🐸','Planta':'🌿',
+            'Lobo':'🐺','Javali':'🐗','Cobra':'🐍','Goblin':'👺','Esqueleto':'💀','Aranha':'🕷️',
+            'Urso':'🐻','Harpia':'🦅','Golem':'🗿','Lagarto':'🦎','Troll':'👹','Ogro':'👾'
+        };
+        overlayCtx.font = (8*zoom) + 'px Segoe UI';
+        overlayCtx.textAlign = 'center';
+
+        // Espalhar símbolos em posições fixas dentro de cada região
+        var rng = 42;
+        function sRng() { rng = (rng * 1664525 + 1013904223) & 0x7fffffff; return rng / 0x7fffffff; }
+
+        for (var rid in REGION_DATA) {
+            var reg = REGION_DATA[rid];
+            if (!reg.mobs.length) continue;
+            // Gera posições aleatórias dentro da região
+            var count = rid === 'arredores' ? 12 : (reg.tier === 2 ? 4 : 6);
+            var placed = 0;
+            var attempts = 0;
+            while (placed < count && attempts < 500) {
+                var rx = Math.floor(sRng() * 520 + 40);
+                var ry = Math.floor(sRng() * 520 + 40);
+                if (regionMap[ry * gridSize + rx] === rid) {
+                    var mob = reg.mobs[placed % reg.mobs.length];
+                    var sym = mobSymbols[mob] || '?';
+                    overlayCtx.fillText(sym, rx * zoom, ry * zoom);
+                    placed++;
+                }
+                attempts++;
+            }
+        }
+    }
+}
+
+function drawLabel(x, y, text, color, font) {
+    overlayCtx.font = font;
+    var metrics = overlayCtx.measureText(text);
+    var tw = metrics.width;
+    var th = parseInt(font) || 12;
+    overlayCtx.fillStyle = '#000000bb';
+    overlayCtx.fillRect(x - tw/2 - 4, y - th/2 - 1, tw + 8, th + 2);
+    overlayCtx.fillStyle = color;
+    overlayCtx.fillText(text, x, y);
+}
+
+function render() { renderOverlay(); }
+
+function setZoom(z) {
+    zoom = parseInt(z);
+    renderBaseMap();
+    renderOverlay();
+}
+
+// =============================================
+// HOVER
+// =============================================
+document.getElementById('mapWrap').addEventListener('mousemove', function(e) {
+    var rect = mapCanvas.getBoundingClientRect();
+    var gx = Math.floor((e.clientX - rect.left) / zoom);
+    var gy = Math.floor((e.clientY - rect.top) / zoom);
+    if (gx < 0 || gx >= gridSize || gy < 0 || gy >= gridSize) return;
+
+    var rid = regionMap ? regionMap[gy * gridSize + gx] : null;
+    var reg = rid ? REGION_DATA[rid] : null;
+
+    var bar = document.getElementById('hoverBar');
+    var cell = mapData ? mapData[gx+','+gy] : null;
+    var terrain = cell ? (cell.terrainType || '—') : 'vazio';
+    var html = '<span class="hcoord">(' + gx + ', ' + gy + ') ' + terrain + '</span>';
+    if (reg) {
+        html += '<span class="hname">' + reg.name + '</span>';
+        if (reg.mobs.length) html += '<span class="hmobs">Mobs: ' + reg.mobs.join(', ') + '</span>';
+        html += '<span>' + (reg.tier === 0 ? 'ZONA SEGURA' : 'Tier ' + reg.tier + ' | Nv ' + reg.lvl) + '</span>';
+    } else {
+        html += '<span style="color:#666">Fora do mapa</span>';
+    }
+    bar.innerHTML = html;
+
+    document.querySelectorAll('.region-box').forEach(function(el) {
+        el.classList.toggle('active', rid && el.dataset.id === rid);
+    });
+});
+
+// =============================================
+// SIDEBAR
+// =============================================
+function buildSidebar() {
+    var sb = document.getElementById('sidebar');
+    var sections = [
+        { title: '🏰 Cidade (Muros)', ids: ['praca','dist_mercantil','dist_artesaos','dist_verdejante','dist_residencial'] },
+        { title: '🟣 Arredores Expandidos', ids: ['arredores'] },
+        { title: '⚔️ Zonas Médias (Tier 1)', ids: ['floresta_uivante','vale_ossos'] },
+        { title: '💀 Zonas Externas (Tier 2)', ids: ['toca_urso','ninho_harpia','gruta_golem','pantano_lagarto','ruinas_troll','floresta_ogro'] },
+    ];
+
+    var html = '';
+    for (var s = 0; s < sections.length; s++) {
+        html += '<h3>' + sections[s].title + '</h3>';
+        for (var r = 0; r < sections[s].ids.length; r++) {
+            var reg = REGION_DATA[sections[s].ids[r]];
+            if (!reg) continue;
+            var rid = sections[s].ids[r];
+            html += '<div class="region-box" data-id="' + rid + '" style="border-left-color:' + reg.border + '">';
+            html += '<div class="rname" style="color:' + reg.border + '">' + reg.name;
+            if (reg.tier > 0) html += ' <span class="tier-badge tier' + reg.tier + '">T' + reg.tier + ' Nv ' + reg.lvl + '</span>';
+            else html += ' <span class="tier-badge" style="background:#ffd70033;color:#ffd700">SEGURO</span>';
+            html += '</div>';
+            html += '<div class="rdesc">' + reg.desc + '</div>';
+            if (reg.mobs.length) {
+                html += '<div style="margin-top:3px">';
+                for (var m = 0; m < reg.mobs.length; m++) html += '<span class="mob-tag">' + reg.mobs[m] + '</span>';
+                html += '</div>';
+            }
+            if (reg.profs.length) {
+                html += '<div style="margin-top:2px">';
+                for (var p = 0; p < reg.profs.length; p++) html += '<span class="prof-tag">' + reg.profs[p] + '</span>';
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+    }
+
+    html += '<h3>🚀 Transportes Rápidos</h3>';
+    html += '<div class="region-box" style="border-left-color:#44aaff">';
+    html += '<div class="rname" style="color:#44aaff">⛵ Balsas do Rio</div>';
+    html += '<div class="rdesc">Viagem rápida pelo rio. Jogador interage com a balsa e é teleportado para a próxima parada.</div>';
+    html += '<div style="margin-top:4px;font-size:11px">';
+    html += '<div style="color:#44aaff">Balsa do Ogro <span style="color:#666">→</span> Balsa da Cidade <span style="color:#666">→</span> Balsa do Vale</div>';
+    html += '<div style="color:#888;font-size:10px;margin-top:2px">Floresta do Ogro ↔ Cidade ↔ Vale dos Ossos</div>';
+    html += '</div></div>';
+
+    html += '<div class="region-box" style="border-left-color:#aa7744">';
+    html += '<div class="rname" style="color:#aa7744">⛏️ Túnel das Minas</div>';
+    html += '<div class="rdesc">Túnel subterrâneo que conecta regiões distantes. Jogador entra numa mina e sai na outra.</div>';
+    html += '<div style="margin-top:4px;font-size:11px">';
+    html += '<div style="color:#aa7744">Mina das Harpias <span style="color:#666">↔</span> Mina Abandonada</div>';
+    html += '<div style="color:#888;font-size:10px;margin-top:2px">Ninho Harpias (NE) ↔ Floresta Uivante / Ruínas Troll (SO)</div>';
+    html += '</div></div>';
+
+    html += '<div class="region-box" style="border-left-color:#ccaa44">';
+    html += '<div class="rname" style="color:#ccaa44">🐴 Carroças</div>';
+    html += '<div class="rdesc">Estradas rápidas por carroça. Hub central na cidade conecta 4 destinos distantes sem cobertura de balsa/mina.</div>';
+    html += '<div style="margin-top:4px;font-size:11px">';
+    html += '<div style="color:#ccaa44">Estábulo Central (Cidade)</div>';
+    html += '<div style="color:#888;font-size:10px">↕ Acampamento Norte <span style="color:#555">|</span> Toca do Urso</div>';
+    html += '<div style="color:#888;font-size:10px">↕ Posto Leste <span style="color:#555">|</span> Gruta do Golem</div>';
+    html += '<div style="color:#888;font-size:10px">↕ Rancho Sul <span style="color:#555">|</span> Pântano dos Lagartos</div>';
+    html += '<div style="color:#888;font-size:10px">↕ Clareira Oeste <span style="color:#555">|</span> Floresta Uivante</div>';
+    html += '</div></div>';
+
+    html += '<h3>📊 Resumo de Tiers</h3>';
+    html += '<div class="region-box" style="border-left-color:#7cb342">';
+    html += '<div class="rname" style="color:#7cb342">Tier 1 — 12 famílias</div>';
+    html += '<div class="rdesc">Antigos T1 + T2 unificados</div>';
+    html += '<div style="margin-top:3px">';
+    ['Rato','Barata','Morcego','Cogumelo','Sapo','Planta','Lobo','Javali','Cobra','Goblin','Esqueleto','Aranha'].forEach(function(m) {
+        html += '<span class="mob-tag">' + m + '</span>';
+    });
+    html += '</div>';
+    html += '<div class="rdesc" style="margin-top:4px">Recursos T1 → Refino T1 → Equip T1</div>';
+    html += '</div>';
+
+    html += '<div class="region-box" style="border-left-color:#ff6b6b">';
+    html += '<div class="rname" style="color:#ff6b6b">Tier 2 — 6 famílias</div>';
+    html += '<div class="rdesc">Antigo T3 → novo Tier 2</div>';
+    html += '<div style="margin-top:3px">';
+    ['Urso','Troll','Golem','Harpia','Lagarto','Ogro'].forEach(function(m) {
+        html += '<span class="mob-tag">' + m + '</span>';
+    });
+    html += '</div>';
+    html += '<div class="rdesc" style="margin-top:4px">Recursos T2 → Refino T2 → Equip T2 / upgrade T1</div>';
+    html += '</div>';
+
+    sb.innerHTML = html;
+}
+
+// =============================================
+// INIT
+// =============================================
+console.log('Gerando mapa...');
+buildMapLookup();
+console.log('Calculando regiões orgânicas...');
+buildRegionMap();
+console.log('Renderizando...');
+renderBaseMap();
+renderOverlay();
+buildSidebar();
+console.log('Pronto!');
+</script>
+</body>
+</html>

@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Editor de Mapa - Cidade Betta</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #111; color: #ddd; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        #container { display: flex; height: 100vh; }
+        #canvasWrap { flex: 1; position: relative; cursor: crosshair; }
+        canvas { display: block; }
+
+        /* ===== EDITOR SIDEBAR ===== */
+        #sidebar {
+            width: 280px; background: #1a1a2e; padding: 10px; overflow-y: auto;
+            border-left: 2px solid #0f3460; font-size: 12px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        #sidebar h2 { color: #e94560; font-size: 15px; margin-bottom: 2px; }
+        #sidebar h3 {
+            color: #7a8ba0; font-size: 11px; margin: 0;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .section { border-bottom: 1px solid #0f3460; padding-bottom: 8px; }
+        .section:last-child { border-bottom: none; }
+
+        /* Tool grid */
+        .tool-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
+        }
+        .tool-btn {
+            display: flex; align-items: center; gap: 5px;
+            padding: 4px 6px; border-radius: 4px; cursor: pointer;
+            border: 2px solid transparent;
+            background: rgba(255,255,255,0.04);
+            transition: 0.12s; user-select: none;
+        }
+        .tool-btn:hover { background: rgba(255,255,255,0.1); }
+        .tool-btn.active { border-color: #e94560; background: rgba(233,69,96,0.2); }
+        .tool-swatch {
+            width: 16px; height: 16px; border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0;
+        }
+        .tool-name { font-size: 11px; white-space: nowrap; }
+
+        /* Special tools row */
+        .special-tools { display: flex; gap: 4px; margin-bottom: 4px; }
+        .special-btn {
+            flex: 1; padding: 6px; border-radius: 5px; cursor: pointer;
+            border: 2px solid transparent; text-align: center;
+            background: rgba(255,255,255,0.06); font-size: 12px;
+            transition: 0.12s; user-select: none;
+        }
+        .special-btn:hover { background: rgba(255,255,255,0.12); }
+        .special-btn.active { border-color: #e94560; background: rgba(233,69,96,0.2); }
+
+        /* Brush sizes */
+        .brush-row { display: flex; gap: 3px; align-items: center; }
+        .brush-btn {
+            width: 28px; height: 28px; border-radius: 4px; cursor: pointer;
+            border: 2px solid transparent; background: rgba(255,255,255,0.06);
+            color: #ddd; font-size: 12px; font-weight: bold;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .brush-btn:hover { background: rgba(255,255,255,0.12); }
+        .brush-btn.active { border-color: #e94560; background: rgba(233,69,96,0.2); }
+
+        /* Action buttons */
+        .action-row { display: flex; gap: 4px; flex-wrap: wrap; }
+        .action-btn {
+            padding: 6px 10px; border-radius: 5px; cursor: pointer;
+            border: 1px solid #0f3460; background: #1a1a2e; color: #ddd;
+            font-size: 11px; flex: 1; text-align: center; white-space: nowrap;
+        }
+        .action-btn:hover { background: #0f3460; }
+        .action-btn:disabled { opacity: 0.3; cursor: default; }
+        .action-btn.export {
+            background: #2a6a3a; border-color: #3a8a4a; color: #cfc;
+        }
+        .action-btn.export:hover { background: #3a8a4a; }
+        .action-btn.danger { color: #f88; }
+        .action-btn.danger:hover { background: #5a2020; }
+
+        /* Stats */
+        .stats { color: #666; font-size: 10px; font-family: monospace; }
+
+        /* View toggles */
+        .view-row { display: flex; gap: 3px; flex-wrap: wrap; }
+        .view-btn {
+            padding: 3px 7px; border-radius: 3px; cursor: pointer;
+            border: 1px solid #0f3460; background: transparent;
+            color: #666; font-size: 10px;
+        }
+        .view-btn:hover { background: rgba(255,255,255,0.06); }
+        .view-btn.on { background: #0f3460; color: #ddd; }
+
+        /* Info overlays */
+        #info {
+            position: absolute; top: 10px; left: 10px; background: rgba(26,26,46,0.92);
+            padding: 6px 12px; border-radius: 6px; font-size: 11px; color: #999; pointer-events: none;
+        }
+        #hoverTip {
+            position: absolute; display: none; background: rgba(26,26,46,0.95);
+            padding: 6px 10px; border-radius: 6px; font-size: 11px; color: #ddd;
+            pointer-events: none; white-space: nowrap; border: 1px solid #0f3460;
+        }
+        #coords {
+            position: absolute; top: 10px; right: 296px; background: rgba(26,26,46,0.9);
+            padding: 4px 10px; border-radius: 6px; font-size: 11px; color: #888;
+            pointer-events: none; font-family: monospace;
+        }
+
+        /* Bottom controls */
+        #controls {
+            position: absolute; bottom: 10px; left: 10px; display: flex; gap: 4px;
+        }
+        #controls button {
+            background: #1a1a2e; color: #ddd; border: 1px solid #0f3460;
+            padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px;
+        }
+        #controls button:hover { background: #0f3460; }
+        #controls button.on { background: #e94560; border-color: #e94560; color: #fff; }
+
+        /* Export modal */
+        #exportModal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 1000;
+            justify-content: center; align-items: center;
+        }
+        #exportModal.show { display: flex; }
+        #exportContent {
+            background: #1a1a2e; border: 2px solid #0f3460; border-radius: 10px;
+            padding: 16px; width: 700px; max-width: 90vw; max-height: 85vh;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        #exportContent h2 { color: #e94560; font-size: 16px; }
+        #exportContent p { color: #888; font-size: 12px; }
+        #exportCode {
+            flex: 1; min-height: 300px; background: #0a0a12; color: #8f8;
+            border: 1px solid #0f3460; border-radius: 6px; padding: 10px;
+            font-family: 'Consolas', 'Courier New', monospace; font-size: 11px;
+            resize: vertical; white-space: pre; overflow: auto;
+        }
+        .modal-btns { display: flex; gap: 8px; }
+        .modal-btns button {
+            padding: 8px 16px; border-radius: 5px; cursor: pointer;
+            border: 1px solid #0f3460; font-size: 12px;
+        }
+        .modal-btns .copy-btn { background: #2a6a3a; color: #cfc; border-color: #3a8a4a; }
+        .modal-btns .copy-btn:hover { background: #3a8a4a; }
+        .modal-btns .close-btn { background: #1a1a2e; color: #ddd; }
+        .modal-btns .close-btn:hover { background: #0f3460; }
+    </style>
+</head>
+<body>
+<div id="container">
+    <div id="canvasWrap">
+        <canvas id="c"></canvas>
+        <div id="info">Esq: pintar | Dir+arrastar: mover | Scroll: zoom | Ctrl+Z: desfazer</div>
+        <div id="hoverTip"></div>
+        <div id="coords">0, 0</div>
+        <div id="controls">
+            <button onclick="resetView()">Reset Zoom</button>
+            <button id="btnGrid" onclick="toggleView('grid')">Grid</button>
+            <button id="btnLabels" class="on" onclick="toggleView('labels')">Labels</button>
+            <button id="btnZones" onclick="toggleView('zones')">Zonas</button>
+            <button id="btnResources" onclick="toggleView('resources')">POIs</button>
+            <button id="btnDungeons" onclick="toggleView('dungeons')">Dungeons</button>
+        </div>
+    </div>
+    <div id="sidebar">
+        <div class="section">
+            <h2>Editor de Mapa</h2>
+            <div class="stats">300x300 | Preview Cidade Betta</div>
+        </div>
+
+        <div class="section">
+            <h3>Modo</h3>
+            <div class="special-tools">
+                <div class="special-btn active" id="toolNavigate" onclick="selectSpecial('navigate')">&#128400; Navegar</div>
+                <div class="special-btn" id="toolEraser" onclick="selectSpecial('eraser')">&#129529; Borracha</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>Terrenos</h3>
+            <div class="tool-grid" id="terrainTools"></div>
+        </div>
+
+        <div class="section">
+            <h3>Elementos</h3>
+            <div class="tool-grid" id="elementTools"></div>
+        </div>
+
+        <div class="section">
+            <h3>Pincel</h3>
+            <div class="brush-row" id="brushRow"></div>
+        </div>
+
+        <div class="section">
+            <h3>Acoes</h3>
+            <div class="action-row">
+                <button class="action-btn" id="btnUndo" onclick="undo()" disabled>&#8617; Desfazer</button>
+                <button class="action-btn" id="btnRedo" onclick="redo()" disabled>&#8618; Refazer</button>
+            </div>
+            <div class="action-row" style="margin-top:4px">
+                <button class="action-btn danger" id="btnClear" onclick="clearAllEdits()" disabled>Limpar Tudo</button>
+            </div>
+            <div class="stats" id="editStats">Edicoes: 0 tiles</div>
+        </div>
+
+        <div class="section">
+            <button class="action-btn export" style="width:100%;padding:10px;font-size:13px;font-weight:bold" onclick="showExport()">Exportar Codigo</button>
+        </div>
+
+        <div class="section">
+            <h3>Visualizacao</h3>
+            <div class="view-row">
+                <button class="view-btn on" id="vLabels" onclick="toggleView('labels')">Labels</button>
+                <button class="view-btn" id="vGrid" onclick="toggleView('grid')">Grid</button>
+                <button class="view-btn" id="vZones" onclick="toggleView('zones')">Zonas</button>
+                <button class="view-btn" id="vResources" onclick="toggleView('resources')">POIs</button>
+                <button class="view-btn" id="vDungeons" onclick="toggleView('dungeons')">Dungeons</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export modal -->
+<div id="exportModal">
+    <div id="exportContent">
+        <h2>Codigo Gerado</h2>
+        <p>Cole este bloco no final da funcao de geracao em <b>cidade.js</b>, antes do return.</p>
+        <p style="color:#666;font-size:10px">Coordenadas escaladas 2x (300 &rarr; 600) para compatibilidade com cidade.js</p>
+        <textarea id="exportCode" readonly></textarea>
+        <div class="modal-btns">
+            <button class="copy-btn" onclick="copyExport()">Copiar</button>
+            <button class="close-btn" onclick="closeExport()">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ========== PERLIN NOISE ==========
+class Perlin {
+    constructor(seed) {
+        this.p = new Uint8Array(512);
+        const perm = new Uint8Array(256);
+        for (let i = 0; i < 256; i++) perm[i] = i;
+        let s = seed;
+        for (let i = 255; i > 0; i--) {
+            s = (s * 16807) % 2147483647;
+            const j = s % (i + 1);
+            [perm[i], perm[j]] = [perm[j], perm[i]];
+        }
+        for (let i = 0; i < 512; i++) this.p[i] = perm[i & 255];
+    }
+    fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+    lerp(a, b, t) { return a + t * (b - a); }
+    grad(h, x, y) { const v = h & 3; return (v < 2 ? (v === 0 ? x : -x) : 0) + (v === 0 || v === 3 ? y : -y); }
+    noise(x, y) {
+        const X = Math.floor(x) & 255, Y = Math.floor(y) & 255;
+        x -= Math.floor(x); y -= Math.floor(y);
+        const u = this.fade(x), v = this.fade(y);
+        const A = this.p[X] + Y, B = this.p[X + 1] + Y;
+        return this.lerp(
+            this.lerp(this.grad(this.p[A], x, y), this.grad(this.p[B], x - 1, y), u),
+            this.lerp(this.grad(this.p[A + 1], x, y - 1), this.grad(this.p[B + 1], x - 1, y - 1), u), v
+        );
+    }
+    fbm(x, y, oct = 4, lac = 2, gain = 0.5) {
+        let s = 0, a = 1, f = 1, m = 0;
+        for (let i = 0; i < oct; i++) { s += this.noise(x * f, y * f) * a; m += a; a *= gain; f *= lac; }
+        return s / m;
+    }
+}
+
+const P1 = new Perlin(42), P2 = new Perlin(137), P3 = new Perlin(999);
+
+// ========== CONSTANTS ==========
+const GW = 300, GH = 300;
+const CX = 150, CY = 148;
+
+// ========== TERRAIN COLORS ==========
+const TC = {
+    grass:    '#2e4a1e', stone:  '#505058', sand:     '#8a7a42',
+    water:    '#1e4a78', dirt:   '#4a3420', snow:     '#c8d0d8',
+    swamp:    '#2a3a1a', lava:   '#8a2800', ice:      '#7ab8d0',
+    wood:     '#6a4a2a', brick:  '#6e3828', marble:   '#d8d0c8',
+    farmland: '#3a2a16', puddle: '#1e3a50',
+    wall_outer: '#606068', wall_inner: '#585060',
+    wall_top:   '#70707a',
+    gate:       '#8a7a50',
+    tree:       '#1a3a10', rock: '#484848',
+    house:      '#6a4030', tower: '#5a5a68',
+    ruins:      '#4a4240',
+};
+
+// ========== SUB-ZONES ==========
+const ZONES = [
+    { id: 'city', name: 'Cidade Betta', level: 'Safe Zone', color: '#8a8a98' },
+    { id: 'campos_norte', name: 'Campos Norte', level: 'Nv 1-3', color: '#4a8a38' },
+    { id: 'bosque_oeste', name: 'Bosque Oeste', level: 'Nv 4-7', color: '#2a5a22' },
+    { id: 'colinas_leste', name: 'Colinas Leste', level: 'Nv 5-10', color: '#6a7a4a' },
+    { id: 'pradaria_sul', name: 'Pradaria Sul', level: 'Nv 8-15', color: '#5a7a30' },
+    { id: 'ruinas', name: 'Ruinas Antigas', level: 'Nv 10-15', color: '#6a5a4a' },
+];
+
+// ========== CITY SHAPE ==========
+function getCityRadius(angle) {
+    const baseRx = 58, baseRy = 48;
+    const base = 1.0 / Math.sqrt(
+        Math.pow(Math.cos(angle) / baseRx, 2) + Math.pow(Math.sin(angle) / baseRy, 2)
+    );
+    const nx = Math.cos(angle) * 3 + 5;
+    const ny = Math.sin(angle) * 3 + 5;
+    const noise = P1.fbm(nx, ny, 4, 2, 0.45) * 12;
+    const bump1 = Math.cos(angle * 3 + 0.5) * 4;
+    const bump2 = Math.sin(angle * 5 - 1.2) * 2;
+    return base + noise + bump1 + bump2;
+}
+
+function isInsideCityWall(x, y) {
+    const dx = x - CX, dy = y - CY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+    return dist < getCityRadius(angle);
+}
+
+function isOnWall(x, y) {
+    const dx = x - CX, dy = y - CY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+    const radius = getCityRadius(angle);
+    return dist >= radius - 5 && dist < radius;
+}
+
+function isOnGate(x, y) {
+    const dx = x - CX, dy = y - CY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+    const radius = getCityRadius(angle);
+    if (dist < radius - 6 || dist > radius + 1) return false;
+    const gateAngles = [-Math.PI * 0.52, Math.PI * 0.47, -0.05, Math.PI + 0.08];
+    const gateWidth = 0.09;
+    for (const ga of gateAngles) {
+        let diff = angle - ga;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        if (Math.abs(diff) < gateWidth) return true;
+    }
+    return false;
+}
+
+function isOnTower(x, y) {
+    const dx = x - CX, dy = y - CY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+    const radius = getCityRadius(angle);
+    if (dist < radius - 7 || dist > radius + 2) return false;
+    const towerAngles = [
+        -Math.PI * 0.52 - 0.12, -Math.PI * 0.52 + 0.12,
+        Math.PI * 0.47 - 0.12, Math.PI * 0.47 + 0.12,
+        -0.05 - 0.12, -0.05 + 0.12,
+        Math.PI + 0.08 - 0.12, Math.PI + 0.08 + 0.12,
+        -Math.PI * 0.25, Math.PI * 0.25, Math.PI * 0.75, -Math.PI * 0.75,
+    ];
+    const towerWidth = 0.04;
+    for (const ta of towerAngles) {
+        let diff = angle - ta;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
+        if (Math.abs(diff) < towerWidth && dist >= radius - 6 && dist < radius + 2) return true;
+    }
+    return false;
+}
+
+// ========== CITY INTERNALS ==========
+function getCityInternalTerrain(x, y) {
+    const dx = x - CX, dy = y - CY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 10) return { terrain: 'marble', zone: 'city', visual: dist < 3 ? 'fountain' : null };
+    const roadNoise = P2.noise(x * 0.05, y * 0.05) * 3;
+    const roadH = Math.abs(dy + roadNoise);
+    const roadV = Math.abs(dx + roadNoise);
+    if (roadH < 2 || roadV < 2) return { terrain: 'stone', zone: 'city', visual: null };
+    if (dx > 5 && dx < 35 && dy < -5 && dy > -30 && dist < 40) {
+        if ((x + y) % 12 < 2) return { terrain: 'stone', zone: 'city', visual: null };
+        if (P1.noise(x * 0.3, y * 0.3) > 0.15) return { terrain: 'stone', zone: 'city', visual: 'house' };
+        return { terrain: 'stone', zone: 'city', visual: null };
+    }
+    if (dx < -5 && dx > -35 && dy > 5 && dy < 30 && dist < 40) {
+        if ((x + y) % 10 < 2) return { terrain: 'dirt', zone: 'city', visual: null };
+        if (P2.noise(x * 0.25, y * 0.25) > 0.2) return { terrain: 'brick', zone: 'city', visual: 'house' };
+        return { terrain: 'dirt', zone: 'city', visual: null };
+    }
+    if (dy < -8 && dx > -30 && dx < 5 && dist < 45) {
+        if (P1.noise(x * 0.2, y * 0.2) > 0.25) return { terrain: 'stone', zone: 'city', visual: 'house' };
+        return { terrain: 'dirt', zone: 'city', visual: null };
+    }
+    if (dy > 8 && dx > -5 && dx < 30 && dist < 45) {
+        if (P3.noise(x * 0.2, y * 0.2) > 0.25) return { terrain: 'stone', zone: 'city', visual: 'house' };
+        return { terrain: 'dirt', zone: 'city', visual: null };
+    }
+    const angle = Math.atan2(dy, dx);
+    const radius = getCityRadius(angle);
+    if (dist > radius - 15 && dist < radius - 5) {
+        if (P3.fbm(x * 0.1, y * 0.1, 3) > 0.1) return { terrain: 'grass', zone: 'city', visual: Math.random() < 0.03 ? 'tree' : null };
+    }
+    if (dx > 20 && Math.abs(dy) < 15 && dist > 30) {
+        if (P1.noise(x * 0.15, y * 0.15) > 0.3) return { terrain: 'stone', zone: 'city', visual: 'house' };
+        return { terrain: 'dirt', zone: 'city', visual: null };
+    }
+    return { terrain: 'grass', zone: 'city', visual: null };
+}
+
+// ========== OUTSIDE ZONES ==========
+function getOutsideZone(x, y) {
+    const dx = x - CX, dy = y - CY;
+    if (dy < -50 && x > 60 && x < 240 && y > 15) return 'campos_norte';
+    if (dx < -50 && y > 60 && y < 230) return 'bosque_oeste';
+    if (dx > 50 && y > 40 && y < 200) return 'colinas_leste';
+    if (dy > 50 && x > 80 && x < 250) return 'pradaria_sul';
+    if (x < 70 && y > 210) return 'ruinas';
+    if (dy < 0) return 'campos_norte';
+    if (dx < 0) return dy > 30 ? 'ruinas' : 'bosque_oeste';
+    if (dx > 0 && dy < 30) return 'colinas_leste';
+    return 'pradaria_sul';
+}
+
+// ========== RIVER ==========
+function getRiverDist(x, y) {
+    const riverPoints = [
+        {x:30,y:5},{x:50,y:40},{x:65,y:80},{x:75,y:120},{x:80,y:155},
+        {x:90,y:190},{x:100,y:220},{x:115,y:250},{x:125,y:280},{x:130,y:300},
+    ];
+    let minDist = 999;
+    for (let i = 0; i < riverPoints.length - 1; i++) {
+        const a = riverPoints[i], b = riverPoints[i + 1];
+        const abx = b.x - a.x, aby = b.y - a.y;
+        const apx = x - a.x, apy = y - a.y;
+        let t = (apx * abx + apy * aby) / (abx * abx + aby * aby);
+        t = Math.max(0, Math.min(1, t));
+        const px = a.x + t * abx, py = a.y + t * aby;
+        const d = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+        if (d < minDist) minDist = d;
+    }
+    const noise = P2.fbm(x * 0.04, y * 0.04, 3) * 2;
+    return minDist + noise;
+}
+
+function isRiver(x, y) { return getRiverDist(x, y) < 3; }
+
+function isBridge(x, y) {
+    const bridges = [
+        { x: 72, y: 105, w: 6, h: 8 },
+        { x: 108, y: 238, w: 8, h: 6 },
+    ];
+    for (const b of bridges) {
+        if (x >= b.x - b.w/2 && x <= b.x + b.w/2 && y >= b.y - b.h/2 && y <= b.y + b.h/2) return true;
+    }
+    return false;
+}
+
+// ========== LAKES ==========
+function getLakeDist(x, y) {
+    const lakes = [
+        { cx: 55, cy: 165, rx: 12, ry: 8 },
+        { cx: 230, cy: 100, rx: 8, ry: 10 },
+        { cx: 170, cy: 265, rx: 10, ry: 7 },
+    ];
+    let minD = 999;
+    for (const l of lakes) {
+        const dx = (x - l.cx) / l.rx, dy = (y - l.cy) / l.ry;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        const noise = P3.fbm(x * 0.08, y * 0.08, 2) * 0.15;
+        if (d + noise < minD) minD = d + noise;
+    }
+    return minD;
+}
+function isLake(x, y) { return getLakeDist(x, y) < 1.0; }
+
+// ========== ELEVATION ==========
+function getElevation(x, y) {
+    const zone = getOutsideZone(x, y);
+    if (zone === 'colinas_leste') {
+        const n = P1.fbm((x - 200) * 0.03, (y - 100) * 0.03, 4, 2, 0.5);
+        return Math.max(0, n * 3 + 0.5);
+    }
+    return 0;
+}
+
+// ========== ROADS ==========
+function isRoad(x, y) {
+    const roads = [
+        { points: [{x:CX-3,y:CY-55},{x:CX-5,y:CY-90},{x:CX-8,y:15}], w: 2 },
+        { points: [{x:CX+3,y:CY+55},{x:CX+5,y:CY+80},{x:CX+10,y:285}], w: 2 },
+        { points: [{x:CX+55,y:CY-2},{x:CX+90,y:CY-5},{x:285,y:CY-8}], w: 2 },
+        { points: [{x:CX-55,y:CY+2},{x:CX-70,y:CY+5},{x:72,y:105}], w: 2 },
+        { points: [{x:108,y:238},{x:120,y:260},{x:130,y:285}], w: 2 },
+    ];
+    for (const road of roads) {
+        for (let i = 0; i < road.points.length - 1; i++) {
+            const a = road.points[i], b = road.points[i + 1];
+            const abx = b.x - a.x, aby = b.y - a.y;
+            const apx = x - a.x, apy = y - a.y;
+            const len2 = abx * abx + aby * aby;
+            if (len2 === 0) continue;
+            let t = (apx * abx + apy * aby) / len2;
+            t = Math.max(0, Math.min(1, t));
+            const px = a.x + t * abx, py = a.y + t * aby;
+            const d = Math.sqrt((x - px) ** 2 + (y - py) ** 2);
+            if (d < road.w) return true;
+        }
+    }
+    return false;
+}
+
+// ========== TRANSITIONS ==========
+function isTransition(x, y) { return (y < 8 || y > 292 || x < 8 || x > 292); }
+
+// ========== TREES, ROCKS, FARMS ==========
+function hasTree(x, y) {
+    const zone = getOutsideZone(x, y);
+    const n = P1.noise(x * 0.4 + 100, y * 0.4 + 100);
+    if (zone === 'bosque_oeste') return n > 0.28;
+    if (zone === 'campos_norte') return n > 0.45;
+    if (zone === 'pradaria_sul') return n > 0.5;
+    if (zone === 'colinas_leste') return n > 0.48;
+    return false;
+}
+
+function hasRock(x, y) {
+    const zone = getOutsideZone(x, y);
+    const n = P2.noise(x * 0.35 + 50, y * 0.35 + 50);
+    if (zone === 'colinas_leste') return n > 0.32;
+    if (zone === 'campos_norte') return n > 0.52;
+    return false;
+}
+
+function isFarmland(x, y) {
+    const fn = { cx: 180, cy: 55, rx: 15, ry: 10 };
+    let dx = (x - fn.cx) / fn.rx, dy = (y - fn.cy) / fn.ry;
+    if (dx * dx + dy * dy < 1) return true;
+    const fs = { cx: 195, cy: 230, rx: 25, ry: 15 };
+    dx = (x - fs.cx) / fs.rx; dy = (y - fs.cy) / fs.ry;
+    if (dx * dx + dy * dy < 1) return true;
+    return false;
+}
+
+function isRuinBlock(x, y) {
+    if (x > 25 && x < 65 && y > 220 && y < 270) {
+        return P3.noise(x * 0.3, y * 0.3) > 0.2;
+    }
+    return false;
+}
+
+// ========== RESOURCE / DUNGEON DATA (for rendering only) ==========
+const RESOURCE_POINTS = [
+    { x: CX, y: CY, icon: '\u26F2', name: 'Fonte da Praca' },
+    { x: CX+22, y: CY-16, icon: '\uD83D\uDED2', name: 'Mercado' },
+    { x: CX+32, y: CY-8, icon: '\uD83C\uDFE6', name: 'Banco' },
+    { x: CX-20, y: CY+12, icon: '\uD83D\uDD28', name: 'Forja' },
+    { x: CX-14, y: CY+20, icon: '\uD83E\uDDF5', name: 'Costuraria' },
+    { x: CX-24, y: CY+22, icon: '\u2697\uFE0F', name: 'Laboratorio' },
+    { x: CX-10, y: CY+28, icon: '\uD83D\uDC8E', name: 'Joalheiro' },
+    { x: 175, y: 40, icon: '\uD83C\uDF3F', name: 'Ervas' },
+    { x: 195, y: 55, icon: '\uD83C\uDF3E', name: 'Fazenda' },
+    { x: 55, y: 130, icon: '\uD83E\uDE93', name: 'Bosque' },
+    { x: 45, y: 175, icon: '\uD83C\uDFA3', name: 'Lago' },
+    { x: 240, y: 80, icon: '\u26CF', name: 'Mina' },
+    { x: 180, y: 235, icon: '\uD83C\uDF3E', name: 'Fazenda Sul' },
+    { x: 45, y: 240, icon: '\uD83C\uDFDA', name: 'Ruinas' },
+];
+
+const DUNGEONS = [
+    { x: CX+5, y: CY+38, icon: '\uD83D\uDEAA', name: 'Esgotos', radius: 6 },
+    { x: 50, y: 140, icon: '\uD83D\uDD73\uFE0F', name: 'Gruta Esporos', radius: 8 },
+    { x: 260, y: 135, icon: '\uD83E\uDD87', name: 'Caverna Sombria', radius: 8 },
+    { x: 185, y: 260, icon: '\uD83C\uDF31', name: 'Raiz Ancestral', radius: 8 },
+    { x: 40, y: 255, icon: '\uD83D\uDC80', name: 'Cripta', radius: 7 },
+];
+
+// ========== GENERATE TILE MAP ==========
+const tileMap = new Array(GW * GH);
+const zoneMap = new Array(GW * GH);
+let originalMap = null;
+
+function generateMap() {
+    for (let y = 0; y < GH; y++) {
+        for (let x = 0; x < GW; x++) {
+            const idx = y * GW + x;
+            let terrain = 'grass', visual = null, zone = 'plains', elev = 0;
+
+            const insideCity = isInsideCityWall(x, y);
+            const onWall = isOnWall(x, y);
+            const onGate = isOnGate(x, y);
+            const onTower = isOnTower(x, y);
+            const river = isRiver(x, y);
+            const bridge = isBridge(x, y);
+            const lake = isLake(x, y);
+            const road = isRoad(x, y);
+            const transition = isTransition(x, y);
+            const farm = isFarmland(x, y);
+
+            if (insideCity) {
+                if (onTower) {
+                    terrain = 'tower'; visual = 'tower'; zone = 'city';
+                } else if (onWall && !onGate) {
+                    terrain = 'wall_outer'; visual = 'wall'; zone = 'city';
+                } else if (onGate) {
+                    terrain = 'gate'; visual = 'gate'; zone = 'city';
+                } else {
+                    const ci = getCityInternalTerrain(x, y);
+                    terrain = ci.terrain; visual = ci.visual; zone = 'city';
+                }
+            } else {
+                zone = getOutsideZone(x, y);
+                elev = getElevation(x, y);
+                if (transition) {
+                    terrain = 'stone'; visual = 'transition';
+                } else if (bridge) {
+                    terrain = 'wood'; visual = 'bridge';
+                } else if (river) {
+                    terrain = 'water'; visual = 'river';
+                } else if (lake) {
+                    terrain = 'water'; visual = 'lake';
+                } else if (road) {
+                    terrain = 'dirt'; visual = 'road';
+                } else if (farm) {
+                    terrain = 'farmland'; visual = 'farm';
+                } else if (isRuinBlock(x, y)) {
+                    terrain = 'ruins'; visual = 'ruins';
+                } else if (hasRock(x, y) && !river && !lake) {
+                    terrain = 'rock'; visual = 'rock';
+                } else if (hasTree(x, y) && !river && !lake) {
+                    terrain = 'tree'; visual = 'tree';
+                } else {
+                    if (zone === 'ruinas') {
+                        terrain = P3.noise(x * 0.1, y * 0.1) > 0 ? 'dirt' : 'stone';
+                    } else if (zone === 'colinas_leste' && elev > 1.5) {
+                        terrain = 'stone';
+                    } else {
+                        terrain = 'grass';
+                    }
+                }
+            }
+
+            tileMap[idx] = { terrain, visual, elev };
+            zoneMap[idx] = zone;
+        }
+    }
+    // Save original for diff/eraser
+    originalMap = tileMap.map(t => ({ ...t }));
+}
+
+// ========== RENDERING ==========
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+let viewX = 0, viewY = 0, zoom = 2.5;
+let showLabels = true, showGrid = false, showZones = false, showResources = false, showDungeons = false;
+let mouseGX = -1, mouseGY = -1;
+let mapImg = null;
+let mapDirty = false;
+
+function renderMapImage() {
+    const off = document.createElement('canvas');
+    off.width = GW; off.height = GH;
+    const octx = off.getContext('2d');
+    const imgData = octx.createImageData(GW, GH);
+    const d = imgData.data;
+
+    for (let y = 0; y < GH; y++) {
+        for (let x = 0; x < GW; x++) {
+            const idx = y * GW + x;
+            const tile = tileMap[idx];
+            let color = TC[tile.terrain] || TC.grass;
+            const nv = P3.noise(x * 0.5 + 200, y * 0.5 + 200) * 15;
+            let r = parseInt(color.slice(1, 3), 16) + nv;
+            let g = parseInt(color.slice(3, 5), 16) + nv;
+            let b = parseInt(color.slice(5, 7), 16) + nv;
+            if (tile.elev > 0) {
+                const eb = tile.elev * 10;
+                r += eb; g += eb; b += eb;
+            }
+            const pi = idx * 4;
+            d[pi]     = Math.max(0, Math.min(255, r));
+            d[pi + 1] = Math.max(0, Math.min(255, g));
+            d[pi + 2] = Math.max(0, Math.min(255, b));
+            d[pi + 3] = 255;
+        }
+    }
+    octx.putImageData(imgData, 0, 0);
+    return off;
+}
+
+function resizeCanvas() {
+    const wrap = document.getElementById('canvasWrap');
+    canvas.width = wrap.clientWidth;
+    canvas.height = wrap.clientHeight;
+}
+
+function hexToRgba(hex, a) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${a})`;
+}
+
+function draw() {
+    if (!mapImg) return;
+
+    // Re-render map if tiles changed
+    if (mapDirty) {
+        mapImg = renderMapImage();
+        mapDirty = false;
+    }
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#0a0a12';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.save();
+    const cx = canvas.width / 2, cy = canvas.height / 2;
+    ctx.translate(cx, cy);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-cx + viewX, -cy + viewY);
+
+    const ox = (canvas.width - GW) / 2;
+    const oy = (canvas.height - GH) / 2;
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(mapImg, ox, oy, GW, GH);
+
+    // Zone overlays
+    if (showZones) {
+        const zoneColors = {
+            city: 'rgba(140,140,160,0.12)',
+            campos_norte: 'rgba(80,160,50,0.10)',
+            bosque_oeste: 'rgba(40,100,30,0.12)',
+            colinas_leste: 'rgba(120,140,70,0.10)',
+            pradaria_sul: 'rgba(100,140,50,0.10)',
+            ruinas: 'rgba(120,100,80,0.15)',
+        };
+        for (const [zoneId, zColor] of Object.entries(zoneColors)) {
+            for (let y = 0; y < GH; y++) {
+                let spanStart = -1;
+                for (let x = 0; x <= GW; x++) {
+                    const z = x < GW ? zoneMap[y * GW + x] : null;
+                    if (z === zoneId) {
+                        if (spanStart < 0) spanStart = x;
+                    } else {
+                        if (spanStart >= 0) {
+                            ctx.fillStyle = zColor;
+                            ctx.fillRect(ox + spanStart, oy + y, x - spanStart, 1);
+                            spanStart = -1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Grid
+    if (showGrid && zoom > 3) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+        ctx.lineWidth = 0.3 / zoom;
+        for (let x = 0; x <= GW; x++) {
+            ctx.beginPath(); ctx.moveTo(ox + x, oy); ctx.lineTo(ox + x, oy + GH); ctx.stroke();
+        }
+        for (let y = 0; y <= GH; y++) {
+            ctx.beginPath(); ctx.moveTo(ox, oy + y); ctx.lineTo(ox + GW, oy + y); ctx.stroke();
+        }
+    }
+
+    // Transition edges
+    ctx.fillStyle = 'rgba(144,64,160,0.25)';
+    ctx.fillRect(ox, oy, GW, 8);
+    ctx.fillRect(ox, oy + GH - 8, GW, 8);
+    ctx.fillRect(ox, oy, 8, GH);
+    ctx.fillRect(ox + GW - 8, oy, 8, GH);
+
+    // Zone labels
+    if (showLabels) {
+        const fs = Math.max(3, 6 / zoom);
+        const labels = [
+            { x: CX, y: CY, text: 'CIDADE BETTA', sub: 'Safe Zone', color: '#ddd' },
+            { x: 155, y: 35, text: 'Campos Norte', sub: 'Nv 1-3', color: '#8f8' },
+            { x: 55, y: 145, text: 'Bosque Oeste', sub: 'Nv 4-7', color: '#6d6' },
+            { x: 250, y: 115, text: 'Colinas Leste', sub: 'Nv 5-10', color: '#ad8' },
+            { x: 175, y: 250, text: 'Pradaria Sul', sub: 'Nv 8-15', color: '#8c6' },
+            { x: 45, y: 235, text: 'Ruinas', sub: 'Nv 10-15', color: '#ca8' },
+        ];
+        for (const l of labels) {
+            const px = ox + l.x, py = oy + l.y;
+            ctx.font = `bold ${fs}px 'Segoe UI'`;
+            const tw = ctx.measureText(l.text).width;
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            const bw = tw + 4 / zoom, bh = fs * 2.5;
+            ctx.beginPath();
+            ctx.roundRect(px - bw / 2, py - bh / 2, bw, bh, 1 / zoom);
+            ctx.fill();
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillStyle = l.color;
+            ctx.fillText(l.text, px, py - fs * 0.3);
+            ctx.font = `${fs * 0.7}px 'Segoe UI'`;
+            ctx.fillStyle = '#aaa';
+            ctx.fillText(l.sub, px, py + fs * 0.5);
+        }
+    }
+
+    // Resources
+    if (showResources) {
+        const fs = Math.max(4, 8 / zoom);
+        for (const rp of RESOURCE_POINTS) {
+            ctx.font = `${fs}px serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(rp.icon, ox + rp.x, oy + rp.y);
+            if (zoom > 2 && showLabels) {
+                ctx.font = `${Math.max(2, 3 / zoom)}px 'Segoe UI'`;
+                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.fillText(rp.name, ox + rp.x, oy + rp.y + fs * 0.6);
+            }
+        }
+    }
+
+    // Dungeons
+    if (showDungeons) {
+        for (const dg of DUNGEONS) {
+            const px = ox + dg.x, py = oy + dg.y, r = dg.radius;
+            const grad = ctx.createRadialGradient(px, py, 0, px, py, r);
+            grad.addColorStop(0, 'rgba(180,50,255,0.25)');
+            grad.addColorStop(1, 'rgba(80,20,120,0)');
+            ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.fillStyle = grad; ctx.fill();
+            ctx.beginPath(); ctx.arc(px, py, r * 0.35, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(60,10,80,0.6)'; ctx.fill();
+            const fs = Math.max(4, 7 / zoom);
+            ctx.font = `${fs}px serif`;
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText(dg.icon, px, py);
+            if (showLabels && zoom > 1.2) {
+                const lfs = Math.max(2, 3.5 / zoom);
+                ctx.font = `bold ${lfs}px 'Segoe UI'`;
+                ctx.fillStyle = '#d090ff';
+                ctx.fillText(dg.name, px, py + r * 0.7 + lfs * 0.5);
+            }
+        }
+    }
+
+    // ===== BRUSH PREVIEW =====
+    if (activeTool && activeTool !== 'navigate' && mouseGX >= 0 && mouseGX < GW && mouseGY >= 0 && mouseGY < GH) {
+        const half = Math.floor(brushSize / 2);
+        let previewColor;
+        if (activeTool === 'eraser') {
+            previewColor = 'rgba(255,80,80,0.35)';
+        } else {
+            const tool = TOOLS.find(t => t.id === activeTool);
+            previewColor = tool ? hexToRgba(TC[tool.terrain] || '#ffffff', 0.45) : 'rgba(255,255,255,0.3)';
+        }
+        for (let dy = -half; dy <= half; dy++) {
+            for (let dx = -half; dx <= half; dx++) {
+                const bx = mouseGX + dx, by = mouseGY + dy;
+                if (bx >= 0 && bx < GW && by >= 0 && by < GH) {
+                    ctx.fillStyle = previewColor;
+                    ctx.fillRect(ox + bx, oy + by, 1, 1);
+                }
+            }
+        }
+        // Brush outline
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = 0.2 / zoom;
+        ctx.strokeRect(ox + mouseGX - half, oy + mouseGY - half, brushSize, brushSize);
+    }
+
+    // Hover tile outline (navigate mode)
+    if (activeTool === 'navigate' && mouseGX >= 0 && mouseGX < GW && mouseGY >= 0 && mouseGY < GH) {
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 0.3 / zoom;
+        ctx.strokeRect(ox + mouseGX, oy + mouseGY, 1, 1);
+    }
+
+    ctx.restore();
+}
+
+// ========== EDITOR ==========
+
+const TOOLS = [
+    // Terrenos base
+    { id: 'stone',    name: 'Calcamento',  terrain: 'stone',     visual: null,    group: 'terrain' },
+    { id: 'dirt',     name: 'Terra/Barro', terrain: 'dirt',      visual: null,    group: 'terrain' },
+    { id: 'grass',    name: 'Grama',       terrain: 'grass',     visual: null,    group: 'terrain' },
+    { id: 'water',    name: 'Agua',        terrain: 'water',     visual: null,    group: 'terrain' },
+    { id: 'wood',     name: 'Ponte',       terrain: 'wood',      visual: 'bridge',group: 'terrain' },
+    { id: 'sand',     name: 'Areia',       terrain: 'sand',      visual: null,    group: 'terrain' },
+    { id: 'brick',    name: 'Tijolo',      terrain: 'brick',     visual: null,    group: 'terrain' },
+    { id: 'marble',   name: 'Marmore',     terrain: 'marble',    visual: null,    group: 'terrain' },
+    { id: 'farmland', name: 'Plantacao',   terrain: 'farmland',  visual: 'farm',  group: 'terrain' },
+    { id: 'puddle',   name: 'Poca',        terrain: 'puddle',    visual: null,    group: 'terrain' },
+    // Elementos
+    { id: 'wall',     name: 'Muro',        terrain: 'wall_outer',visual: 'wall',  group: 'element' },
+    { id: 'gate',     name: 'Portao',      terrain: 'gate',      visual: 'gate',  group: 'element' },
+    { id: 'tree',     name: 'Arvore',      terrain: 'tree',      visual: 'tree',  group: 'element' },
+    { id: 'rock',     name: 'Rocha',       terrain: 'rock',      visual: 'rock',  group: 'element' },
+    { id: 'house',    name: 'Casa',        terrain: 'house',     visual: 'house', group: 'element' },
+    { id: 'tower',    name: 'Torre',       terrain: 'tower',     visual: 'tower', group: 'element' },
+    { id: 'ruins',    name: 'Ruinas',      terrain: 'ruins',     visual: 'ruins', group: 'element' },
+];
+
+let activeTool = 'navigate'; // 'navigate', 'eraser', or tool id
+let brushSize = 1;
+let undoStack = [];
+let redoStack = [];
+let currentStroke = null; // stores original tiles during a paint stroke
+let isPainting = false;
+let isPanning = false;
+let panStartX, panStartY;
+
+function selectTool(toolId) {
+    activeTool = toolId;
+    // Update UI
+    document.querySelectorAll('.tool-btn, .special-btn').forEach(el => {
+        el.classList.remove('active');
+    });
+    if (toolId === 'navigate') {
+        document.getElementById('toolNavigate').classList.add('active');
+        document.getElementById('canvasWrap').style.cursor = 'grab';
+    } else if (toolId === 'eraser') {
+        document.getElementById('toolEraser').classList.add('active');
+        document.getElementById('canvasWrap').style.cursor = 'crosshair';
+    } else {
+        const btn = document.querySelector(`.tool-btn[data-id="${toolId}"]`);
+        if (btn) btn.classList.add('active');
+        document.getElementById('canvasWrap').style.cursor = 'crosshair';
+    }
+}
+
+function selectSpecial(mode) {
+    selectTool(mode);
+}
+
+function setBrushSize(size) {
+    brushSize = size;
+    document.querySelectorAll('.brush-btn').forEach(el => {
+        el.classList.toggle('active', parseInt(el.dataset.size) === size);
+    });
+}
+
+// Paint a single tile at gx,gy
+function paintTile(gx, gy) {
+    if (gx < 0 || gx >= GW || gy < 0 || gy >= GH) return;
+    const idx = gy * GW + gx;
+    const key = gx + ',' + gy;
+
+    if (activeTool === 'eraser') {
+        // Paint grass (blank terrain)
+        if (!currentStroke[key]) {
+            currentStroke[key] = { ...tileMap[idx] };
+        }
+        tileMap[idx] = { terrain: 'grass', visual: null, elev: 0 };
+        mapDirty = true;
+    } else {
+        const tool = TOOLS.find(t => t.id === activeTool);
+        if (!tool) return;
+        if (!currentStroke[key]) {
+            currentStroke[key] = { ...tileMap[idx] };
+        }
+        tileMap[idx] = { terrain: tool.terrain, visual: tool.visual, elev: tileMap[idx].elev };
+        mapDirty = true;
+    }
+}
+
+// Paint brush area
+function paintBrush(gx, gy) {
+    const half = Math.floor(brushSize / 2);
+    for (let dy = -half; dy <= half; dy++) {
+        for (let dx = -half; dx <= half; dx++) {
+            paintTile(gx + dx, gy + dy);
+        }
+    }
+}
+
+function startStroke() {
+    currentStroke = {};
+}
+
+function endStroke() {
+    if (currentStroke && Object.keys(currentStroke).length > 0) {
+        undoStack.push(currentStroke);
+        redoStack = [];
+        if (undoStack.length > 100) undoStack.shift(); // limit history
+    }
+    currentStroke = null;
+    updateUI();
+}
+
+function undo() {
+    if (undoStack.length === 0) return;
+    const stroke = undoStack.pop();
+    const redoData = {};
+    for (const [key, origTile] of Object.entries(stroke)) {
+        const [x, y] = key.split(',').map(Number);
+        const idx = y * GW + x;
+        redoData[key] = { ...tileMap[idx] };
+        tileMap[idx] = { ...origTile };
+    }
+    redoStack.push(redoData);
+    mapDirty = true;
+    updateUI();
+}
+
+function redo() {
+    if (redoStack.length === 0) return;
+    const stroke = redoStack.pop();
+    const undoData = {};
+    for (const [key, tile] of Object.entries(stroke)) {
+        const [x, y] = key.split(',').map(Number);
+        const idx = y * GW + x;
+        undoData[key] = { ...tileMap[idx] };
+        tileMap[idx] = { ...tile };
+    }
+    undoStack.push(undoData);
+    mapDirty = true;
+    updateUI();
+}
+
+function clearAllEdits() {
+    if (!confirm('Limpar TODAS as edicoes e restaurar o mapa original?')) return;
+    // Save current state for undo
+    const stroke = {};
+    for (let i = 0; i < tileMap.length; i++) {
+        if (tileMap[i].terrain !== originalMap[i].terrain || tileMap[i].visual !== originalMap[i].visual) {
+            const x = i % GW, y = Math.floor(i / GW);
+            stroke[x + ',' + y] = { ...tileMap[i] };
+            tileMap[i] = { ...originalMap[i] };
+        }
+    }
+    if (Object.keys(stroke).length > 0) {
+        undoStack.push(stroke);
+        redoStack = [];
+    }
+    mapDirty = true;
+    updateUI();
+}
+
+function countEdits() {
+    let count = 0;
+    for (let i = 0; i < tileMap.length; i++) {
+        if (tileMap[i].terrain !== originalMap[i].terrain || tileMap[i].visual !== originalMap[i].visual) {
+            count++;
+        }
+    }
+    return count;
+}
+
+function updateUI() {
+    document.getElementById('btnUndo').disabled = undoStack.length === 0;
+    document.getElementById('btnRedo').disabled = redoStack.length === 0;
+    const editCount = countEdits();
+    document.getElementById('btnClear').disabled = editCount === 0;
+    document.getElementById('editStats').textContent = `Edicoes: ${editCount} tiles | Historico: ${undoStack.length}`;
+}
+
+// ========== EXPORT ==========
+
+function showExport() {
+    const diffs = [];
+    for (let y = 0; y < GH; y++) {
+        for (let x = 0; x < GW; x++) {
+            const idx = y * GW + x;
+            const cur = tileMap[idx];
+            const orig = originalMap[idx];
+            if (cur.terrain !== orig.terrain || cur.visual !== orig.visual) {
+                diffs.push({ x, y, terrain: cur.terrain, visual: cur.visual });
+            }
+        }
+    }
+
+    if (diffs.length === 0) {
+        alert('Nenhuma edicao para exportar.');
+        return;
+    }
+
+    // Generate code for cidade.js (600x600 grid, coords * 2)
+    let code = '// ====== EDICOES MANUAIS DO MAPA ======\n';
+    code += '// Gerado pelo Editor de Mapa (preview_regiao_cidade.html)\n';
+    code += '// ' + diffs.length + ' tiles editados\n';
+    code += '// Cole este bloco APOS a geracao do mapa em cidade.js,\n';
+    code += '// dentro da funcao generateCityMap, antes do return.\n';
+    code += '// Coordenadas escaladas 2x (preview 300x300 -> jogo 600x600)\n';
+    code += '\n';
+    code += 'var _manualEdits = [\n';
+    for (const d of diffs) {
+        const sx = d.x * 2;
+        const sy = d.y * 2;
+        const vis = d.visual ? ", v: '" + d.visual + "'" : '';
+        code += "    { x: " + sx + ", y: " + sy + ", t: '" + d.terrain + "'" + vis + " },\n";
+    }
+    code += '];\n';
+    code += 'for (var _i = 0; _i < _manualEdits.length; _i++) {\n';
+    code += '    var _me = _manualEdits[_i];\n';
+    code += '    for (var _dy = 0; _dy < 2; _dy++) {\n';
+    code += '        for (var _dx = 0; _dx < 2; _dx++) {\n';
+    code += '            var _mx = _me.x + _dx, _my = _me.y + _dy;\n';
+    code += '            var _mk = _mx + "," + _my;\n';
+    code += '            if (cellMap[_mk]) {\n';
+    code += '                cellMap[_mk].terrainType = _me.t;\n';
+    code += '                if (_me.v) cellMap[_mk].visualType = _me.v;\n';
+    code += '            } else {\n';
+    code += '                add(_mx, _my, { terrainType: _me.t });\n';
+    code += '            }\n';
+    code += '        }\n';
+    code += '    }\n';
+    code += '}\n';
+
+    document.getElementById('exportCode').value = code;
+    document.getElementById('exportModal').classList.add('show');
+}
+
+function copyExport() {
+    const textarea = document.getElementById('exportCode');
+    textarea.select();
+    document.execCommand('copy');
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copiado!';
+    setTimeout(() => { btn.textContent = 'Copiar'; }, 1500);
+}
+
+function closeExport() {
+    document.getElementById('exportModal').classList.remove('show');
+}
+
+// ========== INTERACTION ==========
+
+// Convert screen coords to grid coords
+function screenToGrid(mx, my) {
+    const cx = canvas.width / 2, cy = canvas.height / 2;
+    const wx = (mx - cx) / zoom + cx - viewX;
+    const wy = (my - cy) / zoom + cy - viewY;
+    const ox = (canvas.width - GW) / 2;
+    const oy = (canvas.height - GH) / 2;
+    return { x: Math.floor(wx - ox), y: Math.floor(wy - oy) };
+}
+
+canvas.addEventListener('mousedown', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+    if (e.button === 2 || activeTool === 'navigate') {
+        // Right click or navigate tool: pan
+        isPanning = true;
+        panStartX = e.clientX;
+        panStartY = e.clientY;
+        return;
+    }
+
+    if (e.button === 0 && activeTool !== 'navigate') {
+        // Left click: paint
+        isPainting = true;
+        startStroke();
+        const g = screenToGrid(mx, my);
+        mouseGX = g.x; mouseGY = g.y;
+        paintBrush(g.x, g.y);
+    }
+});
+
+canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+    if (isPanning) {
+        viewX += (e.clientX - panStartX) / zoom;
+        viewY += (e.clientY - panStartY) / zoom;
+        panStartX = e.clientX;
+        panStartY = e.clientY;
+    }
+
+    const g = screenToGrid(mx, my);
+    mouseGX = g.x;
+    mouseGY = g.y;
+
+    // Paint while dragging
+    if (isPainting && activeTool !== 'navigate') {
+        paintBrush(g.x, g.y);
+    }
+
+    // Coords display
+    document.getElementById('coords').textContent = `${g.x}, ${g.y}`;
+
+    // Hover tooltip
+    const tip = document.getElementById('hoverTip');
+    if (g.x >= 0 && g.x < GW && g.y >= 0 && g.y < GH) {
+        const idx = g.y * GW + g.x;
+        const tile = tileMap[idx];
+        const zone = zoneMap[idx];
+        const zoneData = ZONES.find(z => z.id === zone);
+        const zoneName = zoneData ? zoneData.name : zone;
+        const visualName = tile.visual ? ` [${tile.visual}]` : '';
+        const isEdited = (tile.terrain !== originalMap[idx].terrain || tile.visual !== originalMap[idx].visual);
+        const editMark = isEdited ? ' *editado*' : '';
+
+        tip.style.display = 'block';
+        tip.style.left = (e.clientX + 16) + 'px';
+        tip.style.top = (e.clientY - 10) + 'px';
+        tip.innerHTML = `<b>${zoneName}</b> | ${tile.terrain}${visualName}${editMark}`;
+    } else {
+        tip.style.display = 'none';
+    }
+});
+
+window.addEventListener('mouseup', e => {
+    if (isPanning) isPanning = false;
+    if (isPainting) {
+        isPainting = false;
+        endStroke();
+    }
+});
+
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const f = e.deltaY > 0 ? 0.88 : 1.14;
+    zoom = Math.max(0.5, Math.min(25, zoom * f));
+});
+
+// Prevent context menu on right click
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// Keyboard shortcuts
+window.addEventListener('keydown', e => {
+    // Close export modal
+    if (e.key === 'Escape') {
+        closeExport();
+        return;
+    }
+
+    // Don't handle shortcuts if export modal is open
+    if (document.getElementById('exportModal').classList.contains('show')) return;
+
+    // Undo/Redo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault(); undo();
+    }
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault(); redo();
+    }
+
+    // Brush size with [ and ]
+    if (e.key === '[' || e.key === '-') setBrushSize(Math.max(1, brushSize - 2));
+    if (e.key === ']' || e.key === '+' || e.key === '=') setBrushSize(Math.min(9, brushSize + 2));
+
+    // Quick tool select with number keys
+    if (e.key >= '1' && e.key <= '9') {
+        const idx = parseInt(e.key) - 1;
+        if (idx < TOOLS.length) selectTool(TOOLS[idx].id);
+    }
+    if (e.key === '0') selectTool('navigate');
+    if (e.key === 'e' || e.key === 'E') selectTool('eraser');
+});
+
+// ========== CONTROLS ==========
+
+function resetView() { viewX = 0; viewY = 0; zoom = 2.5; }
+
+function toggleView(what) {
+    switch (what) {
+        case 'labels': showLabels = !showLabels; break;
+        case 'grid': showGrid = !showGrid; break;
+        case 'zones': showZones = !showZones; break;
+        case 'resources': showResources = !showResources; break;
+        case 'dungeons': showDungeons = !showDungeons; break;
+    }
+    // Update both bottom and sidebar toggle buttons
+    const btnId = 'btn' + what.charAt(0).toUpperCase() + what.slice(1);
+    const vId = 'v' + what.charAt(0).toUpperCase() + what.slice(1);
+    document.getElementById(btnId)?.classList.toggle('on');
+    document.getElementById(vId)?.classList.toggle('on');
+}
+
+// ========== BUILD SIDEBAR ==========
+
+function buildSidebar() {
+    // Terrain tools
+    const terrainGrid = document.getElementById('terrainTools');
+    TOOLS.filter(t => t.group === 'terrain').forEach(tool => {
+        const el = document.createElement('div');
+        el.className = 'tool-btn';
+        el.dataset.id = tool.id;
+        el.innerHTML = `<div class="tool-swatch" style="background:${TC[tool.terrain] || '#333'}"></div><span class="tool-name">${tool.name}</span>`;
+        el.addEventListener('click', () => selectTool(tool.id));
+        terrainGrid.appendChild(el);
+    });
+
+    // Element tools
+    const elemGrid = document.getElementById('elementTools');
+    TOOLS.filter(t => t.group === 'element').forEach(tool => {
+        const el = document.createElement('div');
+        el.className = 'tool-btn';
+        el.dataset.id = tool.id;
+        el.innerHTML = `<div class="tool-swatch" style="background:${TC[tool.terrain] || '#333'}"></div><span class="tool-name">${tool.name}</span>`;
+        el.addEventListener('click', () => selectTool(tool.id));
+        elemGrid.appendChild(el);
+    });
+
+    // Brush sizes
+    const brushRow = document.getElementById('brushRow');
+    [1, 3, 5, 7, 9].forEach(size => {
+        const btn = document.createElement('div');
+        btn.className = 'brush-btn' + (size === 1 ? ' active' : '');
+        btn.dataset.size = size;
+        btn.textContent = size;
+        btn.addEventListener('click', () => setBrushSize(size));
+        brushRow.appendChild(btn);
+    });
+}
+
+// ========== MAIN ==========
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+generateMap();
+mapImg = renderMapImage();
+buildSidebar();
+updateUI();
+
+function loop() {
+    draw();
+    requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>

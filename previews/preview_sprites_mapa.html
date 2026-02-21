@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Preview - Sprites no Mapa Isométrico</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #1a1a2e;
+            color: #eee;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+        .topbar {
+            background: rgba(10, 10, 20, 0.95);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 6px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            height: 42px;
+            z-index: 100;
+            position: relative;
+        }
+        .topbar h1 { font-size: 13px; color: #ffd700; white-space: nowrap; }
+        .topbar label { font-size: 11px; color: #aaa; display: flex; align-items: center; gap: 4px; }
+        .topbar select, .topbar input[type="range"] {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            color: #fff; padding: 2px 4px; border-radius: 4px; font-size: 11px;
+        }
+        .topbar .sep { width: 1px; height: 20px; background: rgba(255,255,255,0.15); }
+
+        /* Side panel */
+        .side-panel {
+            position: absolute;
+            top: 50px;
+            right: 8px;
+            width: 280px;
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+            background: rgba(10, 10, 20, 0.94);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 50;
+            font-size: 11px;
+        }
+        .side-panel h3 { font-size: 12px; color: #ffd700; margin: 0 0 6px; }
+        .side-panel h4 { font-size: 11px; color: #4a9eff; margin: 8px 0 4px; }
+
+        .drop-area {
+            border: 2px dashed rgba(255,215,0,0.3);
+            border-radius: 6px;
+            padding: 10px;
+            text-align: center;
+            color: #888;
+            cursor: pointer;
+            transition: all 0.2s;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .drop-area:hover, .drop-area.dragover {
+            border-color: #ffd700;
+            background: rgba(255,215,0,0.05);
+            color: #ffd700;
+        }
+
+        /* Sheet preview with grid overlay */
+        .sheet-preview {
+            position: relative;
+            margin-top: 6px;
+            background: repeating-conic-gradient(#222 0% 25%, #333 0% 50%) 50% / 10px 10px;
+            border-radius: 4px;
+            overflow: hidden;
+            line-height: 0;
+        }
+        .sheet-preview img {
+            width: 100%;
+            image-rendering: pixelated;
+            display: block;
+        }
+        .sheet-preview canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+        }
+
+        /* Single frame preview */
+        .frame-preview {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+            padding: 6px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+        }
+        .frame-preview canvas {
+            border: 1px solid rgba(255,255,255,0.2);
+            image-rendering: pixelated;
+            background: repeating-conic-gradient(#222 0% 25%, #333 0% 50%) 50% / 6px 6px;
+        }
+        .frame-preview .info { font-size: 10px; color: #aaa; }
+        .frame-preview .info b { color: #fff; }
+
+        .ctrl-row {
+            display: flex; align-items: center; gap: 6px; margin: 3px 0;
+        }
+        .ctrl-row label { color: #aaa; font-size: 11px; min-width: 55px; }
+        .ctrl-row select, .ctrl-row input {
+            background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+            color: #fff; padding: 2px 4px; border-radius: 3px; font-size: 11px; flex: 1;
+        }
+        .ctrl-row .btn {
+            background: rgba(255,215,0,0.2); border: 1px solid rgba(255,215,0,0.4);
+            color: #ffd700; padding: 2px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;
+        }
+        .ctrl-row .btn:hover { background: rgba(255,215,0,0.3); }
+
+        .status { font-size: 10px; color: #4ade80; margin: 4px 0; }
+        .status.warn { color: #ffa500; }
+
+        /* Legend */
+        .legend {
+            margin-top: 8px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .legend-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font-size: 10px; }
+        .legend-swatch { width: 10px; height: 10px; border-radius: 2px; border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; }
+
+        #canvas { display: block; width: 100%; height: calc(100vh - 42px); cursor: grab; }
+        #canvas:active { cursor: grabbing; }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <h1>Preview — Sprites no Mapa</h1>
+    <div class="sep"></div>
+    <label>Zoom: <input type="range" id="zoomSlider" min="0.5" max="5" step="0.1" value="2"> <span id="zoomLabel">2.0x</span></label>
+    <div class="sep"></div>
+    <label>Grid: <select id="gridSize"><option value="8">8</option><option value="12" selected>12</option><option value="16">16</option></select></label>
+    <div class="sep"></div>
+    <label><input type="checkbox" id="showSizeRef" checked> Ref. tamanho</label>
+    <label><input type="checkbox" id="showTileOutline" checked> Tiles</label>
+    <label><input type="checkbox" id="animateSprites" checked> Animar</label>
+</div>
+
+<div class="side-panel">
+    <h3>1. Carregar Sprite Sheet</h3>
+    <div class="drop-area" id="dropArea">Arraste, cole (Ctrl+V) ou clique</div>
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+
+    <div id="sheetSection" style="display:none">
+        <!-- Sheet preview with grid overlay -->
+        <div class="sheet-preview" id="sheetPreview">
+            <img id="sheetImg">
+            <canvas id="gridOverlay"></canvas>
+        </div>
+
+        <div class="status" id="detectStatus"></div>
+
+        <!-- Detection controls -->
+        <h4>Detecção de Frames</h4>
+        <div class="ctrl-row">
+            <label>Colunas:</label>
+            <input type="number" id="inpCols" min="1" max="20" value="6" style="width:50px">
+            <label>Linhas:</label>
+            <input type="number" id="inpRows" min="1" max="20" value="6" style="width:50px">
+            <button class="btn" id="btnRedetect">Auto</button>
+        </div>
+
+        <!-- Single frame preview -->
+        <div class="frame-preview">
+            <canvas id="frameCanvas" width="64" height="64"></canvas>
+            <div class="info">
+                <div>Frame: <b id="frameInfo">-</b></div>
+                <div>Tamanho src: <b id="frameSrcSize">-</b></div>
+                <div>Destino: <b>48×48px</b> (base)</div>
+            </div>
+        </div>
+
+        <h4>2. Configurar Mob</h4>
+        <div class="ctrl-row">
+            <label>Mob:</label>
+            <select id="mobSelect">
+                <option value="rato">Rato (tiny 0.6x)</option>
+                <option value="barata">Barata (tiny 0.6x)</option>
+                <option value="cogumelo">Cogumelo (small 0.8x)</option>
+                <option value="sapo">Sapo (small 0.8x)</option>
+                <option value="morcego">Morcego (medium 1.0x)</option>
+                <option value="planta">Planta (small 0.8x)</option>
+                <option value="lobo">Lobo (medium 1.0x)</option>
+                <option value="aranha">Aranha (small 0.8x)</option>
+                <option value="javali">Javali (large 1.3x)</option>
+                <option value="esqueleto">Esqueleto (medium 1.0x)</option>
+                <option value="cobra">Cobra (small 0.8x)</option>
+                <option value="goblin">Goblin (small 0.8x)</option>
+                <option value="urso">Urso (large 1.3x)</option>
+                <option value="troll">Troll (large 1.3x)</option>
+                <option value="golem">Golem (huge 1.6x)</option>
+                <option value="harpia">Harpia (medium 1.0x)</option>
+                <option value="lagarto">Lagarto (large 1.3x)</option>
+                <option value="ogro">Ogro (huge 1.6x)</option>
+            </select>
+        </div>
+        <div class="ctrl-row">
+            <label>Linha anim:</label>
+            <select id="animRow"></select>
+        </div>
+    </div>
+
+    <div class="legend">
+        <h4 style="margin-top:0">Escala por Categoria</h4>
+        <div class="legend-row"><div class="legend-swatch" style="background:#e74c3c"></div> tiny (0.6x) ~29px — Rato, Barata</div>
+        <div class="legend-row"><div class="legend-swatch" style="background:#e67e22"></div> small (0.8x) ~38px — Cogumelo, Sapo...</div>
+        <div class="legend-row"><div class="legend-swatch" style="background:#3498db"></div> medium (1.0x) ~48px — Lobo, Esqueleto</div>
+        <div class="legend-row"><div class="legend-swatch" style="background:#9b59b6"></div> large (1.3x) ~62px — Javali, Urso</div>
+        <div class="legend-row"><div class="legend-swatch" style="background:#e74c3c;border:2px solid #ff0"></div> huge (1.6x) ~77px — Golem, Ogro</div>
+        <div class="legend-row" style="margin-top:3px;border-top:1px solid rgba(255,255,255,0.1);padding-top:3px"><div class="legend-swatch" style="background:#2ecc71"></div> player (1.0x) ~48px — Jogador</div>
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+// ========== CONSTANTS ==========
+const TILE_WIDTH = 64, TILE_HEIGHT = 32, HALF_TW = 32, HALF_TH = 16;
+const FRAME_SIZE = 48;
+
+const SIZE_SCALES = { tiny: 0.6, small: 0.8, medium: 1.0, large: 1.3, huge: 1.6, player: 1.0 };
+const SHADOW_CFG = {
+    tiny: {w:20,h:10,a:0.25}, small: {w:26,h:13,a:0.28}, medium: {w:32,h:16,a:0.30},
+    large: {w:42,h:21,a:0.33}, huge: {w:52,h:26,a:0.35}, player: {w:32,h:16,a:0.30}
+};
+
+const MOB_DEFS = {
+    rato:{size:'tiny',color:'#888',accent:'#a64',body:'quadrupede',label:'Rato'},
+    barata:{size:'tiny',color:'#531',accent:'#842',body:'rastejante',label:'Barata'},
+    cogumelo:{size:'small',color:'#c85',accent:'#f44',body:'vegetal',label:'Cogumelo'},
+    sapo:{size:'small',color:'#4a4',accent:'#262',body:'amorfo',label:'Sapo'},
+    morcego:{size:'medium',color:'#546',accent:'#324',body:'voador',label:'Morcego'},
+    planta:{size:'small',color:'#3a3',accent:'#f64',body:'vegetal',label:'Planta'},
+    lobo:{size:'medium',color:'#778',accent:'#556',body:'quadrupede',label:'Lobo'},
+    aranha:{size:'small',color:'#432',accent:'#611',body:'rastejante',label:'Aranha'},
+    javali:{size:'large',color:'#853',accent:'#642',body:'quadrupede',label:'Javali'},
+    esqueleto:{size:'medium',color:'#cca',accent:'#997',body:'humanoide',label:'Esqueleto'},
+    cobra:{size:'small',color:'#484',accent:'#fc0',body:'rastejante',label:'Cobra'},
+    goblin:{size:'small',color:'#5a5',accent:'#853',body:'humanoide',label:'Goblin'},
+    urso:{size:'large',color:'#642',accent:'#431',body:'quadrupede',label:'Urso'},
+    troll:{size:'large',color:'#584',accent:'#463',body:'humanoide',label:'Troll'},
+    golem:{size:'huge',color:'#887',accent:'#fa0',body:'amorfo',label:'Golem'},
+    harpia:{size:'medium',color:'#a76',accent:'#876',body:'voador',label:'Harpia'},
+    lagarto:{size:'large',color:'#574',accent:'#463',body:'quadrupede',label:'Lagarto'},
+    ogro:{size:'huge',color:'#864',accent:'#743',body:'humanoide',label:'Ogro'}
+};
+
+const SIZE_COLORS = { tiny:'#e74c3c', small:'#e67e22', medium:'#3498db', large:'#9b59b6', huge:'#ff4444', player:'#2ecc71' };
+
+// ========== STATE ==========
+let canvas, ctx;
+let zoom = 2.0, camX = 0, camY = 0, gridN = 12;
+let dragging = false, dragSX = 0, dragSY = 0, camSX = 0, camSY = 0;
+let showSizeRef = true, showTileOutline = true, animateOn = true, frameTime = 0;
+
+// Sprite state
+let spriteSheet = null;
+let sheetCols = 6, sheetRows = 6;
+let spriteAnimRow = 0, spriteMob = 'rato';
+let detectedFrameW = 0, detectedFrameH = 0;
+
+// Entities
+const refEntities = [
+    {x:5,y:5,type:'player',label:'Jogador (1.0x)'},
+    {x:3,y:3,type:'rato',label:'Rato (tiny)'},
+    {x:4,y:2,type:'cogumelo',label:'Cogumelo (small)'},
+    {x:6,y:3,type:'lobo',label:'Lobo (medium)'},
+    {x:7,y:5,type:'javali',label:'Javali (large)'},
+    {x:5,y:7,type:'golem',label:'Golem (huge)'},
+    {x:2,y:6,type:'barata',label:'Barata (tiny)'},
+    {x:8,y:4,type:'esqueleto',label:'Esqueleto (medium)'},
+    {x:3,y:8,type:'ogro',label:'Ogro (huge)'},
+    {x:9,y:7,type:'urso',label:'Urso (large)'},
+    {x:7,y:2,type:'goblin',label:'Goblin (small)'},
+    {x:1,y:4,type:'aranha',label:'Aranha (small)'},
+];
+let customSpriteEntities = []; // multiple sprites on map for comparison
+
+// ========== INIT ==========
+function init() {
+    canvas = document.getElementById('canvas');
+    ctx = canvas.getContext('2d');
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    centerCamera();
+    setupControls();
+    setupDragDrop();
+    requestAnimationFrame(gameLoop);
+}
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight - 42;
+}
+
+function centerCamera() {
+    const cx = gridN / 2, cy = gridN / 2;
+    camX = (cx - cy) * HALF_TW;
+    camY = (cx + cy) * HALF_TH;
+}
+
+// ========== AUTO-DETECT FRAMES ==========
+function autoDetectFrames(img) {
+    // Draw image to temp canvas to read pixels
+    const tc = document.createElement('canvas');
+    tc.width = img.width;
+    tc.height = img.height;
+    const tctx = tc.getContext('2d');
+    tctx.drawImage(img, 0, 0);
+    const data = tctx.getImageData(0, 0, img.width, img.height).data;
+
+    // Find transparent columns (alpha < 10 for entire column)
+    function isColTransparent(x) {
+        let transparentCount = 0;
+        for (let y = 0; y < img.height; y++) {
+            if (data[(y * img.width + x) * 4 + 3] < 15) transparentCount++;
+        }
+        return transparentCount / img.height > 0.85;
+    }
+
+    function isRowTransparent(y) {
+        let transparentCount = 0;
+        for (let x = 0; x < img.width; x++) {
+            if (data[(y * img.width + x) * 4 + 3] < 15) transparentCount++;
+        }
+        return transparentCount / img.width > 0.85;
+    }
+
+    // Find content bounds (trim fully transparent borders)
+    let contentLeft = 0, contentRight = img.width - 1;
+    let contentTop = 0, contentBottom = img.height - 1;
+    while (contentLeft < img.width && isColTransparent(contentLeft)) contentLeft++;
+    while (contentRight > contentLeft && isColTransparent(contentRight)) contentRight--;
+    while (contentTop < img.height && isRowTransparent(contentTop)) contentTop++;
+    while (contentBottom > contentTop && isRowTransparent(contentBottom)) contentBottom--;
+
+    const contentW = contentRight - contentLeft + 1;
+    const contentH = contentBottom - contentTop + 1;
+
+    // Strategy: Find gaps in content (transparent columns/rows inside content area)
+    // Scan for vertical gaps
+    const vGaps = [];
+    let inGap = false, gapStart = 0;
+    for (let x = contentLeft; x <= contentRight; x++) {
+        const trans = isColTransparent(x);
+        if (trans && !inGap) { inGap = true; gapStart = x; }
+        if (!trans && inGap) { inGap = false; vGaps.push({start: gapStart, end: x - 1, mid: (gapStart + x - 1) / 2}); }
+    }
+
+    // Scan for horizontal gaps
+    const hGaps = [];
+    inGap = false;
+    for (let y = contentTop; y <= contentBottom; y++) {
+        const trans = isRowTransparent(y);
+        if (trans && !inGap) { inGap = true; gapStart = y; }
+        if (!trans && inGap) { inGap = false; hGaps.push({start: gapStart, end: y - 1, mid: (gapStart + y - 1) / 2}); }
+    }
+
+    let bestCols, bestRows;
+
+    if (vGaps.length >= 1 && hGaps.length >= 1) {
+        // Use gaps to determine grid
+        bestCols = vGaps.length + 1;
+        bestRows = hGaps.length + 1;
+        console.log(`Detected via gaps: ${bestCols}×${bestRows} (${vGaps.length} vGaps, ${hGaps.length} hGaps)`);
+    } else {
+        // Fallback: try common grid sizes and find best square-ish frames
+        const candidates = [];
+        for (let c = 2; c <= 12; c++) {
+            const fw = img.width / c;
+            for (let r = 2; r <= 12; r++) {
+                const fh = img.height / r;
+                const aspect = fw / fh;
+                // Prefer square frames (aspect close to 1.0)
+                const aspectScore = Math.abs(aspect - 1.0);
+                // Prefer reasonable frame sizes (30-200px)
+                const sizeScore = (fw > 20 && fw < 300 && fh > 20 && fh < 300) ? 0 : 10;
+                // Prefer whole-number divisions
+                const divScore = (img.width % c === 0 ? 0 : 0.5) + (img.height % r === 0 ? 0 : 0.5);
+                candidates.push({c, r, fw, fh, score: aspectScore + sizeScore + divScore});
+            }
+        }
+        candidates.sort((a, b) => a.score - b.score);
+        bestCols = candidates[0].c;
+        bestRows = candidates[0].r;
+        console.log(`Detected via heuristic: ${bestCols}×${bestRows} (fw=${(img.width/bestCols).toFixed(0)}, fh=${(img.height/bestRows).toFixed(0)})`);
+    }
+
+    return { cols: bestCols, rows: bestRows };
+}
+
+// ========== SPRITE SHEET HANDLING ==========
+function loadSpriteSheet(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            spriteSheet = img;
+
+            // Show sheet section
+            document.getElementById('sheetSection').style.display = 'block';
+            document.getElementById('sheetImg').src = e.target.result;
+            document.getElementById('dropArea').innerHTML = '<span style="color:#4ade80">Carregado! Clique para trocar</span>';
+
+            // Auto-detect
+            const det = autoDetectFrames(img);
+            sheetCols = det.cols;
+            sheetRows = det.rows;
+            detectedFrameW = Math.round(img.width / sheetCols);
+            detectedFrameH = Math.round(img.height / sheetRows);
+
+            document.getElementById('inpCols').value = sheetCols;
+            document.getElementById('inpRows').value = sheetRows;
+            document.getElementById('detectStatus').textContent =
+                `Detectado: ${sheetCols}×${sheetRows} grid (frame ${detectedFrameW}×${detectedFrameH}px)`;
+
+            updateGridOverlay();
+            updateAnimRowOptions();
+            updateFramePreview();
+            updateCustomEntities();
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function updateGridOverlay() {
+    const img = spriteSheet;
+    if (!img) return;
+
+    const overlay = document.getElementById('gridOverlay');
+    const container = document.getElementById('sheetPreview');
+
+    // Match overlay to displayed size
+    const displayW = container.clientWidth;
+    const displayH = (img.height / img.width) * displayW;
+    overlay.width = displayW;
+    overlay.height = displayH;
+    overlay.style.height = displayH + 'px';
+
+    const octx = overlay.getContext('2d');
+    octx.clearRect(0, 0, displayW, displayH);
+
+    const cellW = displayW / sheetCols;
+    const cellH = displayH / sheetRows;
+
+    // Draw grid
+    octx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+    octx.lineWidth = 1;
+    for (let c = 1; c < sheetCols; c++) {
+        octx.beginPath();
+        octx.moveTo(c * cellW, 0);
+        octx.lineTo(c * cellW, displayH);
+        octx.stroke();
+    }
+    for (let r = 1; r < sheetRows; r++) {
+        octx.beginPath();
+        octx.moveTo(0, r * cellH);
+        octx.lineTo(displayW, r * cellH);
+        octx.stroke();
+    }
+
+    // Highlight current animation row
+    octx.fillStyle = 'rgba(74, 158, 255, 0.15)';
+    octx.fillRect(0, spriteAnimRow * cellH, displayW, cellH);
+    octx.strokeStyle = 'rgba(74, 158, 255, 0.8)';
+    octx.lineWidth = 2;
+    octx.strokeRect(0, spriteAnimRow * cellH, displayW, cellH);
+
+    // Frame numbers
+    octx.font = '9px Arial';
+    octx.fillStyle = 'rgba(255,215,0,0.8)';
+    octx.textAlign = 'center';
+    for (let r = 0; r < sheetRows; r++) {
+        for (let c = 0; c < sheetCols; c++) {
+            octx.fillText(`${r},${c}`, c * cellW + cellW/2, r * cellH + 10);
+        }
+    }
+}
+
+function updateAnimRowOptions() {
+    const sel = document.getElementById('animRow');
+    sel.innerHTML = '';
+    for (let r = 0; r < sheetRows; r++) {
+        const opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = `Linha ${r}`;
+        sel.appendChild(opt);
+    }
+    spriteAnimRow = 0;
+}
+
+function updateFramePreview() {
+    if (!spriteSheet) return;
+    const fc = document.getElementById('frameCanvas');
+    const fctx = fc.getContext('2d');
+    fc.width = 80;
+    fc.height = 80;
+    fctx.clearRect(0, 0, 80, 80);
+    fctx.imageSmoothingEnabled = false;
+
+    const fw = spriteSheet.width / sheetCols;
+    const fh = spriteSheet.height / sheetRows;
+
+    // Draw first frame scaled to preview
+    const scale = Math.min(76 / fw, 76 / fh);
+    const dw = fw * scale, dh = fh * scale;
+    fctx.drawImage(spriteSheet, 0, 0, fw, fh, (80 - dw)/2, (80 - dh)/2, dw, dh);
+
+    // Border
+    fctx.strokeStyle = 'rgba(255,215,0,0.5)';
+    fctx.strokeRect((80-dw)/2, (80-dh)/2, dw, dh);
+
+    document.getElementById('frameInfo').textContent = `Row 0, Col 0`;
+    document.getElementById('frameSrcSize').textContent = `${Math.round(fw)}×${Math.round(fh)}px`;
+}
+
+function updateCustomEntities() {
+    if (!spriteSheet) return;
+    const def = MOB_DEFS[spriteMob];
+    // Place sprite versions at multiple positions for comparison
+    customSpriteEntities = [
+        {x:6, y:6, type: spriteMob, label: def.label + ' (sprite)', useSprite: true},
+        // Also place at different sizes for comparison
+        {x:4, y:6, type: spriteMob, label: def.label + ' como medium', useSprite: true, overrideSize: 'medium'},
+        {x:8, y:6, type: spriteMob, label: def.label + ' como large', useSprite: true, overrideSize: 'large'},
+    ];
+}
+
+// ========== CONTROLS ==========
+function setupControls() {
+    document.getElementById('zoomSlider').addEventListener('input', (e) => {
+        zoom = parseFloat(e.target.value);
+        document.getElementById('zoomLabel').textContent = zoom.toFixed(1) + 'x';
+    });
+    document.getElementById('gridSize').addEventListener('change', (e) => {
+        gridN = parseInt(e.target.value);
+        centerCamera();
+    });
+    document.getElementById('showSizeRef').addEventListener('change', (e) => showSizeRef = e.target.checked);
+    document.getElementById('showTileOutline').addEventListener('change', (e) => showTileOutline = e.target.checked);
+    document.getElementById('animateSprites').addEventListener('change', (e) => animateOn = e.target.checked);
+
+    document.getElementById('mobSelect').addEventListener('change', (e) => {
+        spriteMob = e.target.value;
+        updateCustomEntities();
+    });
+    document.getElementById('animRow').addEventListener('change', (e) => {
+        spriteAnimRow = parseInt(e.target.value);
+        updateGridOverlay();
+    });
+
+    // Manual col/row adjustment
+    document.getElementById('inpCols').addEventListener('change', (e) => {
+        sheetCols = Math.max(1, parseInt(e.target.value) || 1);
+        detectedFrameW = Math.round(spriteSheet.width / sheetCols);
+        detectedFrameH = Math.round(spriteSheet.height / sheetRows);
+        document.getElementById('detectStatus').textContent =
+            `Manual: ${sheetCols}×${sheetRows} grid (frame ${detectedFrameW}×${detectedFrameH}px)`;
+        updateGridOverlay();
+        updateAnimRowOptions();
+        updateFramePreview();
+    });
+    document.getElementById('inpRows').addEventListener('change', (e) => {
+        sheetRows = Math.max(1, parseInt(e.target.value) || 1);
+        detectedFrameW = Math.round(spriteSheet.width / sheetCols);
+        detectedFrameH = Math.round(spriteSheet.height / sheetRows);
+        document.getElementById('detectStatus').textContent =
+            `Manual: ${sheetCols}×${sheetRows} grid (frame ${detectedFrameW}×${detectedFrameH}px)`;
+        updateGridOverlay();
+        updateAnimRowOptions();
+        updateFramePreview();
+    });
+    document.getElementById('btnRedetect').addEventListener('click', () => {
+        if (!spriteSheet) return;
+        const det = autoDetectFrames(spriteSheet);
+        sheetCols = det.cols;
+        sheetRows = det.rows;
+        detectedFrameW = Math.round(spriteSheet.width / sheetCols);
+        detectedFrameH = Math.round(spriteSheet.height / sheetRows);
+        document.getElementById('inpCols').value = sheetCols;
+        document.getElementById('inpRows').value = sheetRows;
+        document.getElementById('detectStatus').textContent =
+            `Re-detectado: ${sheetCols}×${sheetRows} grid (frame ${detectedFrameW}×${detectedFrameH}px)`;
+        updateGridOverlay();
+        updateAnimRowOptions();
+        updateFramePreview();
+    });
+
+    // Canvas drag
+    canvas.addEventListener('mousedown', (e) => { dragging=true; dragSX=e.clientX; dragSY=e.clientY; camSX=camX; camSY=camY; });
+    window.addEventListener('mousemove', (e) => { if(!dragging)return; camX=camSX-(e.clientX-dragSX)/zoom; camY=camSY-(e.clientY-dragSY)/zoom; });
+    window.addEventListener('mouseup', () => dragging=false);
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        zoom = Math.max(0.5, Math.min(5, zoom + (e.deltaY > 0 ? -0.15 : 0.15)));
+        document.getElementById('zoomSlider').value = zoom;
+        document.getElementById('zoomLabel').textContent = zoom.toFixed(1) + 'x';
+    });
+}
+
+// ========== DRAG & DROP ==========
+function setupDragDrop() {
+    const drop = document.getElementById('dropArea');
+    const fi = document.getElementById('fileInput');
+    drop.addEventListener('click', () => fi.click());
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+    drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('dragover'); if(e.dataTransfer.files.length) loadSpriteSheet(e.dataTransfer.files[0]); });
+    fi.addEventListener('change', () => { if(fi.files.length) loadSpriteSheet(fi.files[0]); });
+    document.addEventListener('paste', (e) => {
+        for (let item of e.clipboardData.items) {
+            if (item.type.startsWith('image/')) { loadSpriteSheet(item.getAsFile()); break; }
+        }
+    });
+}
+
+// ========== RENDERING ==========
+function gridToScreen(gx, gy) {
+    const hw = canvas.width/2, hh = canvas.height/2;
+    return {
+        x: ((gx-gy)*HALF_TW - camX)*zoom + hw,
+        y: ((gx+gy)*HALF_TH - camY)*zoom + hh
+    };
+}
+
+function drawTile(gx, gy) {
+    const t = gridToScreen(gx,gy), r = gridToScreen(gx+1,gy), b = gridToScreen(gx+1,gy+1), l = gridToScreen(gx,gy+1);
+    const v = ((gx*7+gy*13)%5)*4 - 8;
+    const base = [74+v, 122+v, 59+v];
+    ctx.fillStyle = `rgb(${base[0]},${base[1]},${base[2]})`;
+    ctx.beginPath(); ctx.moveTo(t.x,t.y); ctx.lineTo(r.x,r.y); ctx.lineTo(b.x,b.y); ctx.lineTo(l.x,l.y); ctx.closePath(); ctx.fill();
+    if (showTileOutline) { ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 1; ctx.stroke(); }
+}
+
+function drawShadow(px, py, sz) {
+    const c = SHADOW_CFG[sz];
+    ctx.save(); ctx.globalAlpha = c.a; ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse(px, py+2*zoom, c.w*zoom/2, c.h*zoom/2, 0, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+}
+
+function drawPawnShape(px, py, sz, color, accent, bodyType, label) {
+    const s = SIZE_SCALES[sz] * zoom;
+    drawShadow(px, py, sz);
+    const bH = 35*s, bW = 12*s, hR = 8*s;
+    const br = animateOn ? Math.sin(frameTime*2)*1.5*s : 0;
+
+    ctx.fillStyle = color;
+    if (bodyType === 'quadrupede') {
+        const w=bW*1.3, h=bH*0.7;
+        ctx.beginPath(); ctx.ellipse(px, py-h*0.5+br, w, h*0.5, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle=accent; ctx.beginPath(); ctx.ellipse(px+w*0.5, py-h*0.4+br, hR*0.8, hR*0.7, 0, 0, Math.PI*2); ctx.fill();
+    } else if (bodyType === 'voador') {
+        const wW=bW*1.5, fl=animateOn?Math.sin(frameTime*6)*4*s:0;
+        ctx.beginPath(); ctx.ellipse(px, py-bH*0.7+br, bW*0.6, bH*0.3, 0, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle=accent;
+        ctx.beginPath(); ctx.ellipse(px-wW, py-bH*0.8+fl, wW*0.7, bH*0.15, -0.3, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(px+wW, py-bH*0.8+fl, wW*0.7, bH*0.15, 0.3, 0, Math.PI*2); ctx.fill();
+    } else if (bodyType === 'rastejante') {
+        ctx.beginPath(); ctx.ellipse(px, py-bH*0.17+br, bW*1.4, bH*0.35, 0, 0, Math.PI*2); ctx.fill();
+    } else if (bodyType === 'vegetal') {
+        const sw=animateOn?Math.sin(frameTime*1.5)*2*s:0;
+        ctx.fillRect(px-bW*0.3, py-bH*0.6, bW*0.6, bH*0.6);
+        ctx.fillStyle=accent; ctx.beginPath(); ctx.ellipse(px+sw, py-bH*0.7+br, bW*1.2, bH*0.4, 0, 0, Math.PI*2); ctx.fill();
+    } else if (bodyType === 'amorfo') {
+        const sq=animateOn?Math.sin(frameTime*2)*2*s:0;
+        ctx.beginPath(); ctx.ellipse(px, py-bH*0.4+sq, bW*1.1-sq*0.3, bH*0.5+sq*0.2, 0, 0, Math.PI*2); ctx.fill();
+    } else { // humanoide
+        ctx.fillStyle=accent;
+        ctx.fillRect(px-bW*0.4, py-bH*0.3, bW*0.35, bH*0.3);
+        ctx.fillRect(px+bW*0.05, py-bH*0.3, bW*0.35, bH*0.3);
+        ctx.fillStyle=color;
+        ctx.beginPath(); ctx.moveTo(px-bW,py-bH*0.3); ctx.lineTo(px-bW*0.7,py-bH+br); ctx.lineTo(px+bW*0.7,py-bH+br); ctx.lineTo(px+bW,py-bH*0.3); ctx.closePath(); ctx.fill();
+        ctx.fillStyle=accent; ctx.beginPath(); ctx.arc(px,py-bH-hR*0.5+br,hR,0,Math.PI*2); ctx.fill();
+    }
+
+    // Bounding box
+    if (showSizeRef) {
+        const sprH = FRAME_SIZE*SIZE_SCALES[sz]*zoom;
+        ctx.strokeStyle = SIZE_COLORS[sz]||'#fff'; ctx.lineWidth=1; ctx.globalAlpha=0.35;
+        ctx.strokeRect(px-sprH/2, py-sprH, sprH, sprH); ctx.globalAlpha=1;
+    }
+    // Label
+    if (label) {
+        ctx.font=`${Math.max(8,9*zoom)}px Arial`; ctx.textAlign='center'; ctx.fillStyle='#fff'; ctx.globalAlpha=0.75;
+        ctx.fillText(label, px, py-FRAME_SIZE*SIZE_SCALES[sz]*zoom-3*zoom); ctx.globalAlpha=1;
+    }
+}
+
+function drawPlayer(px, py) {
+    const s=zoom;
+    drawShadow(px,py,'player');
+    const bH=35*s, bW=12*s, hR=8*s, br=animateOn?Math.sin(frameTime*2+1)*1.5*s:0;
+    ctx.fillStyle='#2255aa'; ctx.fillRect(px-bW*0.4,py-bH*0.3,bW*0.35,bH*0.3); ctx.fillRect(px+bW*0.05,py-bH*0.3,bW*0.35,bH*0.3);
+    ctx.fillStyle='#2ecc71'; ctx.beginPath(); ctx.moveTo(px-bW,py-bH*0.3); ctx.lineTo(px-bW*0.7,py-bH+br); ctx.lineTo(px+bW*0.7,py-bH+br); ctx.lineTo(px+bW,py-bH*0.3); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#f5c6a0'; ctx.beginPath(); ctx.arc(px,py-bH-hR*0.3+br,hR,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#ccc'; ctx.lineWidth=2*s; ctx.beginPath(); ctx.moveTo(px+bW*1.2,py-bH*0.5+br); ctx.lineTo(px+bW*1.2,py-bH*1.1+br); ctx.stroke();
+    if (showSizeRef) {
+        const sp=FRAME_SIZE*zoom; ctx.strokeStyle=SIZE_COLORS.player; ctx.lineWidth=1; ctx.globalAlpha=0.35;
+        ctx.strokeRect(px-sp/2,py-sp,sp,sp); ctx.globalAlpha=1;
+    }
+    ctx.font=`bold ${Math.max(8,9*zoom)}px Arial`; ctx.textAlign='center'; ctx.fillStyle='#2ecc71'; ctx.globalAlpha=0.85;
+    ctx.fillText('Jogador (1.0x)', px, py-FRAME_SIZE*zoom-3*zoom); ctx.globalAlpha=1;
+}
+
+function drawSpriteFrame(px, py, sizeCategory) {
+    if (!spriteSheet) return;
+    const fw = spriteSheet.width / sheetCols;
+    const fh = spriteSheet.height / sheetRows;
+
+    const totalFrames = sheetCols;
+    const currentFrame = animateOn ? Math.floor((Date.now()/200) % totalFrames) : 0;
+
+    const sx = currentFrame * fw;
+    const sy = spriteAnimRow * fh;
+
+    // NORMALIZE: always render at FRAME_SIZE base (48px) × size scale × zoom
+    const scale = SIZE_SCALES[sizeCategory];
+    const drawW = FRAME_SIZE * scale * zoom;
+    const drawH = FRAME_SIZE * scale * zoom;
+
+    drawShadow(px, py, sizeCategory);
+
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(spriteSheet, sx, sy, fw, fh, px-drawW/2, py-drawH, drawW, drawH);
+    ctx.imageSmoothingEnabled = true;
+
+    if (showSizeRef) {
+        ctx.strokeStyle = SIZE_COLORS[sizeCategory]||'#fff'; ctx.lineWidth=1; ctx.globalAlpha=0.35;
+        ctx.strokeRect(px-drawW/2, py-drawH, drawW, drawH); ctx.globalAlpha=1;
+    }
+}
+
+function drawEntity(ent) {
+    const scr = gridToScreen(ent.x+0.5, ent.y+0.5);
+    const px=scr.x, py=scr.y;
+
+    if (ent.type === 'player') { drawPlayer(px,py); return; }
+
+    const def = MOB_DEFS[ent.type];
+    if (!def) return;
+
+    const sz = ent.overrideSize || def.size;
+
+    if (ent.useSprite && spriteSheet) {
+        drawSpriteFrame(px, py, sz);
+        ctx.font=`${Math.max(8,9*zoom)}px Arial`; ctx.textAlign='center'; ctx.fillStyle='#ffd700'; ctx.globalAlpha=0.85;
+        ctx.fillText(ent.label, px, py-FRAME_SIZE*SIZE_SCALES[sz]*zoom-3*zoom); ctx.globalAlpha=1;
+        return;
+    }
+
+    drawPawnShape(px, py, sz, def.color, def.accent, def.body, ent.label);
+}
+
+// ========== GAME LOOP ==========
+function gameLoop(ts) {
+    frameTime = ts / 1000;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle='#1a1a2e'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    for (let y=0;y<gridN;y++) for(let x=0;x<gridN;x++) drawTile(x,y);
+
+    const all = [...refEntities, ...customSpriteEntities];
+    all.sort((a,b) => (a.y*1000+a.x) - (b.y*1000+b.x));
+    for (const e of all) if (e.x<gridN&&e.y<gridN) drawEntity(e);
+
+    // HUD
+    ctx.font='10px Arial'; ctx.fillStyle='#555'; ctx.textAlign='left';
+    ctx.fillText(`Tile:${TILE_WIDTH}×${TILE_HEIGHT} | Frame:${FRAME_SIZE}×${FRAME_SIZE} | Zoom:${zoom.toFixed(1)}x`, 8, canvas.height-6);
+
+    requestAnimationFrame(gameLoop);
+}
+
+init();
+</script>
+</body>
+</html>

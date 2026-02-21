@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Preview - Tile Recortada</title>
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; overflow: hidden; font-family: Arial, sans-serif; color: #fff; }
+    canvas { display: block; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+    #hud {
+        position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.7);
+        padding: 6px 12px; border-radius: 6px; font-size: 13px; color: #aef;
+        pointer-events: none; z-index: 5;
+    }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="hud">Carregando...</div>
+
+<script>
+// === GAME CONSTANTS ===
+const TILE_WIDTH = 64, TILE_HEIGHT = 32;
+const HALF_TW = 32, HALF_TH = 16;
+const GRID = 12;
+const COLS = 4, ROWS = 3;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const hud = document.getElementById('hud');
+
+let zoom = 3.0;
+let camX = 0, camY = 0;
+let dragging = false, dragSX, dragSY, camSX, camSY;
+
+let allTiles = [];       // raw tile canvases (192x256 each)
+let currentTileIdx = 0;
+
+function resize() { canvas.width = innerWidth; canvas.height = innerHeight; }
+addEventListener('resize', resize);
+resize();
+
+camX = 0;
+camY = GRID * HALF_TH;
+
+// === SOURCE DIAMOND: top face of the 3D block in tile pixel space (192×256) ===
+// These 4 vertices mark the top face diamond of the isometric block.
+// Adjust with arrow keys: ↑↓ = move all Y, Shift+↑↓ = stretch height, Ctrl+↑↓ = move top only
+const srcDiamond = {
+    top:    [96,  31],
+    right:  [169, 82],
+    bottom: [96, 130],
+    left:   [23,  82]
+};
+
+// Load spritesheet and extract individual tiles
+const spriteImg = new Image();
+spriteImg.onload = function() {
+    const tw = Math.floor(spriteImg.width / COLS);
+    const th = Math.floor(spriteImg.height / ROWS);
+
+    for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+            const cvs = document.createElement('canvas');
+            cvs.width = tw; cvs.height = th;
+            cvs.getContext('2d').drawImage(spriteImg, c * tw, r * th, tw, th, 0, 0, tw, th);
+            allTiles.push(cvs);
+        }
+    }
+    requestAnimationFrame(render);
+};
+spriteImg.src = 'tiles_terreno.jpg';
+
+// === AFFINE TEXTURE-MAPPED TRIANGLE ===
+// Maps a triangle from the source image onto a triangle on the canvas.
+function drawTexturedTriangle(img,
+    sx0, sy0, sx1, sy1, sx2, sy2,   // source triangle (image pixels)
+    dx0, dy0, dx1, dy1, dx2, dy2)   // destination triangle (screen pixels)
+{
+    ctx.save();
+
+    // Clip to destination triangle
+    ctx.beginPath();
+    ctx.moveTo(dx0, dy0);
+    ctx.lineTo(dx1, dy1);
+    ctx.lineTo(dx2, dy2);
+    ctx.closePath();
+    ctx.clip();
+
+    // Solve affine transform:  dst = M * src + T
+    //   dx = a*sx + b*sy + tx
+    //   dy = c*sx + d*sy + ty
+    const det = (sx0 - sx2) * (sy1 - sy2) - (sx1 - sx2) * (sy0 - sy2);
+    if (Math.abs(det) < 0.001) { ctx.restore(); return; }
+
+    const a  = ((dx0 - dx2) * (sy1 - sy2) - (dx1 - dx2) * (sy0 - sy2)) / det;
+    const b  = ((dx1 - dx2) * (sx0 - sx2) - (dx0 - dx2) * (sx1 - sx2)) / det;
+    const tx = dx0 - a * sx0 - b * sy0;
+
+    const c  = ((dy0 - dy2) * (sy1 - sy2) - (dy1 - dy2) * (sy0 - sy2)) / det;
+    const d  = ((dy1 - dy2) * (sx0 - sx2) - (dy0 - dy2) * (sx1 - sx2)) / det;
+    const ty = dy0 - c * sx0 - d * sy0;
+
+    // setTransform(a, b, c, d, e, f) → x' = a*x + c*y + e,  y' = b*x + d*y + f
+    ctx.setTransform(a, c, b, d, tx, ty);
+    ctx.drawImage(img, 0, 0);
+
+    ctx.restore();
+}
+
+// === DRAW ONE GRID CELL ===
+function drawCell(sx, sy) {
+    if (allTiles.length === 0) return;
+    const tile = allTiles[currentTileIdx];
+
+    const cw = TILE_WIDTH * zoom;
+    const ch = TILE_HEIGHT * zoom;
+
+    // Destination diamond — expand by 1px to cover anti-aliasing gaps
+    const ex = 1;
+    const dT = [sx,              sy - ex];
+    const dR = [sx + cw / 2 + ex, sy + ch / 2];
+    const dB = [sx,              sy + ch + ex];
+    const dL = [sx - cw / 2 - ex, sy + ch / 2];
+
+    // Fill diamond with base earth color first (covers any sub-pixel gaps)
+    ctx.beginPath();
+    ctx.moveTo(dT[0], dT[1]);
+    ctx.lineTo(dR[0], dR[1]);
+    ctx.lineTo(dB[0], dB[1]);
+    ctx.lineTo(dL[0], dL[1]);
+    ctx.closePath();
+    ctx.fillStyle = '#b89b6a';
+    ctx.fill();
+
+    // Source diamond (top face of 3D block in tile image)
+    const sT = srcDiamond.top;
+    const sR = srcDiamond.right;
+    const sB = srcDiamond.bottom;
+    const sL = srcDiamond.left;
+
+    // Split diamond into 2 triangles along the horizontal diagonal (right↔left)
+
+    // Upper triangle: top → right → left
+    drawTexturedTriangle(tile,
+        sT[0], sT[1], sR[0], sR[1], sL[0], sL[1],
+        dT[0], dT[1], dR[0], dR[1], dL[0], dL[1]);
+
+    // Lower triangle: right → bottom → left
+    drawTexturedTriangle(tile,
+        sR[0], sR[1], sB[0], sB[1], sL[0], sL[1],
+        dR[0], dR[1], dB[0], dB[1], dL[0], dL[1]);
+}
+
+// === RENDER LOOP ===
+function render() {
+    requestAnimationFrame(render);
+    const W = canvas.width, H = canvas.height;
+    const hw = W / 2, hh = H / 2;
+
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, W, H);
+
+    // Back-to-front
+    for (let sum = 0; sum < GRID * 2; sum++) {
+        for (let x = 0; x < GRID; x++) {
+            const y = sum - x;
+            if (y < 0 || y >= GRID) continue;
+
+            const isoX = (x - y) * HALF_TW;
+            const isoY = (x + y) * HALF_TH;
+            const sx = (isoX - camX) * zoom + hw;
+            const sy = (isoY - camY) * zoom + hh;
+
+            drawCell(sx, sy);
+        }
+    }
+
+    hud.textContent =
+        `Zoom: ${zoom.toFixed(1)}x | Tile: ${currentTileIdx + 1}/${allTiles.length} `
+      + `| [1-9,0] trocar tile | Scroll=zoom | Drag=mover`;
+}
+
+// === CONTROLS ===
+canvas.addEventListener('mousedown', (e) => {
+    dragging = true;
+    dragSX = e.clientX; dragSY = e.clientY;
+    camSX = camX; camSY = camY;
+});
+addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    camX = camSX - (e.clientX - dragSX) / zoom;
+    camY = camSY - (e.clientY - dragSY) / zoom;
+});
+addEventListener('mouseup', () => { dragging = false; });
+canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    zoom = Math.max(0.5, Math.min(10, zoom + (e.deltaY > 0 ? -0.25 : 0.25)));
+}, { passive: false });
+
+// Number keys: switch tile (1 = first tile, 0 = 10th)
+addEventListener('keydown', (e) => {
+    const n = parseInt(e.key);
+    if (!isNaN(n) && allTiles.length > 0) {
+        const idx = n === 0 ? 9 : n - 1;
+        if (idx < allTiles.length) {
+            currentTileIdx = idx;
+        }
+    }
+});
+</script>
+</body>
+</html>
