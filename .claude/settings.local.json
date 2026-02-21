@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(python -m http.server:*)",
+      "Bash(node -c:*)",
+      "Bash(python update_preset.py:*)",
+      "Bash(del:*)",
+      "Bash(python apply_preset.py:*)",
+      "Bash(start \"\" \"1-iniciar-servidor.bat\")",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(node -e:*)",
+      "Bash(node:*)",
+      "WebFetch(domain:wakfu.fandom.com)",
+      "Bash(ls -la \"c:\\\\jogo criando\\\\novo jogo simples\\\\sistema\"\" 2>nul | grep -v \"^. \")",
+      "Bash(findstr:*)",
+      "Bash(start \"\" \"c:\\\\jogo criando\\\\novo jogo simples\\\\previews\\\\preview_build_nv20.html\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git reset:*)",
+      "Bash(cmd /c:*)",
+      "Bash(printf:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)",
+      "Bash(powershell -Command \"Get-ChildItem ''C:\\\\Users\\\\Afy\\\\Downloads\\\\gen-*.png'' | Sort-Object LastWriteTime -Descending | Select-Object -First 20 | ForEach-Object { $_LastWriteTime.ToString\\(''yyyy-MM-dd HH:mm''\\) + '' '' + $_Name }\")",
+      "Bash(cmd //c:*)",
+      "Bash(python -c:*)",
+      "Bash(head:*)"
+    ]
+  }
+}
