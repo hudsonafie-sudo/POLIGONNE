@@ -1,5 +1,19 @@
 # Instrucoes do Projeto - Jogo Tatico por Turnos
 
+## Protocolo de Sessao (OBRIGATORIO)
+
+- **`docs/session-log.md`** — Log de todas as sessoes. **LER ao iniciar. ATUALIZAR ao encerrar.**
+
+1. **Ao iniciar:** Ler `docs/session-log.md` para saber o que outros chats fizeram
+2. **Ao encerrar ou quando o contexto estiver enchendo:** Adicionar entrada no session-log com:
+   - O que foi feito (resumo)
+   - Arquivos modificados
+   - Decisoes tomadas que afetam outros sistemas
+   - O que ficou pendente
+3. **Se o usuario pedir pra "continuar o trabalho de outro chat":** Consultar session-log para entender o estado completo
+
+---
+
 ## LEITURA OBRIGATORIA — TRES DOCUMENTOS
 
 **ANTES de fazer qualquer trabalho neste projeto, LEIA os documentos abaixo na ordem indicada:**
