@@ -5,12 +5,10 @@
 - **`docs/session-log.md`** — Log de todas as sessoes. **LER ao iniciar. ATUALIZAR ao encerrar.**
 
 1. **Ao iniciar:** Ler `docs/session-log.md` para saber o que outros chats fizeram
-2. **Ao encerrar ou quando o contexto estiver enchendo:** Adicionar entrada no session-log com:
-   - O que foi feito (resumo)
-   - Arquivos modificados
-   - Decisoes tomadas que afetam outros sistemas
-   - O que ficou pendente
-3. **Se o usuario pedir pra "continuar o trabalho de outro chat":** Consultar session-log para entender o estado completo
+2. **A cada mudanca significativa:** Adicionar 1 linha no session-log (NAO esperar o final)
+3. **Ao encerrar ou quando o contexto estiver enchendo:** Garantir que session-log tem resumo completo
+4. **Se o usuario pedir "continua" ou "encerra":** Atualizar session-log ANTES de prosseguir
+5. **Se o usuario pedir pra "continuar o trabalho de outro chat":** Consultar session-log
 
 ---
 
