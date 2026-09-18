@@ -6,5 +6,9 @@
       "Write(*)",
       "Read(*)"
     ]
+  },
+  "enabledPlugins": {
+    "jogos@hudson": true,
+    "marketing@hudson": true
   }
 }
